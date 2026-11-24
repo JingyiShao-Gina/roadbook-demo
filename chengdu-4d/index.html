@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>成都四日路书</title>
+<style>
+/* VOICE everyday travel: calm, useful on the road
+   IDEA a pocket itinerary card the guest keeps on their phone, every place one tap from navigation or a call
+   PICTURE cover band: layered Qingcheng hills with the dashed route of the trip across them
+   COLOUR bamboo-ink green field, white ground, pale leaf support, chili red for every tappable action
+   TYPE system Songti for titles, system PingFang/YaHei for text (no external fonts, opens anywhere)
+   LAYOUT single phone column up to 640px, centred on desktop; contact bar fixed at the bottom */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0f1714);--ink:light-dark(#14201b,#e8efe9);--muted:light-dark(#5b6b63,#9fb0a7);--green:light-dark(#1f4d3a,#143528);--leaf:light-dark(#eaf2ec,#17241e);--chili:light-dark(#c8322a,#ff6f61);--line:light-dark(#dde6df,#26352d);--card:light-dark(#ffffff,#132019)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:16px;scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;overflow-x:clip;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:640px;margin:0 auto}
+h1,h2,h3{font-family:"Songti SC","STSong","Noto Serif CJK SC","SimSun",serif;letter-spacing:-.01em;margin:0}
+a{color:inherit}
+.cover{background:var(--green);color:#fff}
+.cover .in{padding:28px 20px 0}
+.org{font-size:14px;opacity:.85}
+.cover h1{font-size:clamp(34px,9vw,48px);line-height:1.08;margin-top:14px;text-wrap:balance}
+.meta{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;font-size:15px;opacity:.95}
+.meta b{font-weight:600}
+.hills{display:block;width:100%;height:auto;margin-top:18px}
+.stops{display:flex;flex-wrap:wrap;gap:6px;padding:0 20px 22px;margin-top:-6px}
+.stops span{font-size:13px;background:rgba(255,255,255,.14);border-radius:999px;padding:4px 10px;white-space:nowrap}
+section{padding:28px 20px 8px}
+h2{font-size:26px;line-height:1.15;margin-bottom:14px}
+.overview{display:grid;gap:10px}
+.ov{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:14px;text-decoration:none;background:var(--card)}
+.ov:hover{border-color:var(--green)}
+.ov .d{font-family:"Songti SC","STSong",serif;font-size:24px;color:var(--green);font-weight:700}
+:root[data-theme=dark] .ov .d{color:#8fd1ad}
+.ov .t{font-weight:600}
+.ov .s{font-size:14px;color:var(--muted)}
+.ov .go{font-size:14px;color:var(--muted)}
+.meet{background:var(--leaf);border-radius:16px;padding:16px}
+.meet p{margin:4px 0}
+.day{border-top:8px solid var(--leaf);padding-top:28px}
+.dhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.dhead .no{font-family:"Songti SC","STSong",serif;font-size:40px;line-height:1;color:var(--chili);font-weight:700}
+.dhead .date{font-size:14px;color:var(--muted)}
+.day h2{margin:8px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chips span{font-size:13px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.sched{list-style:none;margin:0;padding:0}
+.sched li{display:grid;grid-template-columns:4.2em minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.sched li:last-child{border-bottom:0}
+.time{font-variant-numeric:tabular-nums;font-size:18px;font-weight:700;white-space:nowrap;padding-top:1px}
+.what{font-weight:600}
+.place{margin-top:8px;background:var(--leaf);border-radius:12px;padding:12px}
+.place .pn{font-weight:600}
+.place .pd{font-size:14px;color:var(--muted);margin-top:2px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:999px;font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid var(--chili);color:var(--chili);background:transparent;white-space:nowrap}
+.btn.solid{background:var(--chili);color:#fff}
+.btn svg{width:16px;height:16px;flex:none}
+.btn:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.num{font-size:13px;color:var(--muted);align-self:center;white-space:nowrap}
+.tip{margin-top:12px;font-size:15px;border-left:3px solid var(--chili);padding:2px 0 2px 12px;color:var(--ink)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.box{border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.box h3{font-size:18px;margin-bottom:6px}
+.box ul{margin:0;padding-left:1.1em}
+.box li{margin:4px 0}
+.notes{margin:0;padding-left:1.2em}
+.notes li{margin:6px 0}
+footer{padding:28px 20px 36px;font-size:13px;color:var(--muted)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));z-index:5}
+.bar .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.call{display:flex;flex-direction:column;justify-content:center;min-height:52px;border-radius:14px;padding:6px 12px;text-decoration:none;background:var(--green);color:#fff}
+.call.alt{background:var(--leaf);color:var(--ink)}
+.call b{font-size:15px}
+.call small{font-size:13px;opacity:.85;font-variant-numeric:tabular-nums}
+@media(min-width:700px){.cover .in{padding:40px 32px 0}.stops{padding:0 32px 26px}section{padding:32px 32px 8px}footer{padding:32px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="cover">
+  <div class="wrap">
+    <div class="in">
+      <div class="org">示例旅行社 · 出行手册</div>
+      <h1>成都四日<br>熊猫、古堰与青城山</h1>
+      <div class="meta"><span><b>12月5日–8日</b>（周六至周二）</span><span>4天3晚</span><span>6人小团</span></div>
+    </div>
+    <svg class="hills" viewBox="0 0 640 170" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <path d="M0 120 C70 70 120 90 170 60 S280 40 330 78 S450 30 520 64 S610 70 640 52 V170 H0Z" fill="#fff" fill-opacity=".08"/>
+      <path d="M0 140 C60 104 130 120 190 96 S300 86 360 112 S470 80 540 104 S610 110 640 98 V170 H0Z" fill="#fff" fill-opacity=".12"/>
+      <path d="M0 158 C80 140 150 150 230 136 S380 146 450 134 S580 140 640 130 V170 H0Z" fill="#fff" fill-opacity=".18"/>
+      <path d="M40 132 C110 120 150 96 210 104 S300 70 360 86 S470 60 530 74 S590 92 610 80" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 7" stroke-linecap="round"/>
+      <g fill="#ff8a7a" stroke="#fff" stroke-width="2.5"><circle cx="40" cy="132" r="7"/><circle cx="210" cy="104" r="7"/><circle cx="360" cy="86" r="7"/><circle cx="530" cy="74" r="7"/><circle cx="610" cy="80" r="7"/></g>
+    </svg>
+    <div class="stops"><span>宽窄巷子</span><span>大熊猫基地</span><span>武侯祠 · 锦里</span><span>都江堰</span><span>青城山</span><span>人民公园</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <h2>行程一览</h2>
+    <div class="overview" id="ov"></div>
+  </section>
+
+  <section>
+    <h2>集合与接机</h2>
+    <div class="meet">
+      <p><b>12月5日 14:00</b> 天府国际机场 T1 到达层，导游举“示例旅行社 · 成都四日”接机牌。</p>
+      <p>航班延误不用担心，导游会实时关注航班动态。</p>
+      <div class="acts" id="meetActs"></div>
+    </div>
+  </section>
+
+  <div id="days"></div>
+
+  <section>
+    <h2>费用说明</h2>
+    <div class="cols">
+      <div class="box"><h3>已包含</h3><ul><li>3晚市区精品酒店，豪华大床房含早</li><li>大熊猫基地、都江堰、青城山前山门票及青城山索道</li><li>全程7座商务车，司机兼向导</li><li>12月5日火锅晚餐、12月7日农家午餐</li></ul></div>
+      <div class="box"><h3>不包含</h3><ul><li>往返大交通</li><li>未注明的餐食与个人消费</li><li>旅游意外险（建议自行购买）</li></ul></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>出行提示</h2>
+    <ol class="notes">
+      <li>12月成都白天约 8–13°C，青城山更冷，请带厚外套和防滑鞋。</li>
+      <li>大熊猫基地上午熊猫最活跃，第二天早上 7:30 准时出发。</li>
+      <li>武侯祠、都江堰需刷身份证入园，请随身携带。</li>
+      <li>川菜偏辣，点菜时可告诉服务员“微辣”或“不辣”。</li>
+    </ol>
+  </section>
+</main>
+
+<footer class="wrap">本页为演示样例：旅行社、酒店、餐厅名称和所有电话号码均为虚构，地点导航使用高德地图按名称搜索。</footer>
+
+<nav class="bar" aria-label="联系方式">
+  <div class="in">
+    <a class="call" href="tel:13800001234"><b>致电导游 王导</b><small>138 0000 1234</small></a>
+    <a class="call alt" href="tel:13900005678"><b>致电司机 张师傅</b><small>139 0000 5678</small></a>
+  </div>
+</nav>
+
+<script>
+{
+const city='成都';
+const nav=kw=>'https://uri.amap.com/search?keyword='+encodeURIComponent(kw)+'&city='+encodeURIComponent(city)+'&src=roadbook-demo';
+const icoNav='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>';
+const icoTel='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2"/></svg>';
+const navBtn=(kw,label)=>'<a class="btn solid" href="'+nav(kw)+'" target="_blank" rel="noopener">'+icoNav+(label||'导航')+'</a>';
+const telBtn=(n,label)=>'<a class="btn" href="tel:'+n.replace(/\s/g,'')+'">'+icoTel+label+'</a><span class="num">'+n+'</span>';
+const days=[
+ {d:'D1',date:'12月5日 周六',title:'抵达成都，夜游宽窄巷子',sub:'接机 · 火锅晚餐',chips:['晚餐含','住：春熙路精品酒店'],items:[
+  {t:'14:00',w:'天府国际机场接机，乘车前往市区（约60分钟）'},
+  {t:'15:30',w:'入住酒店，稍作休息',p:{n:'春熙路示例精品酒店',d:'锦江区，近春熙路地铁站 · 豪华大床房含早',kw:'春熙路',tel:'028 0000 1001'}},
+  {t:'17:30',w:'宽窄巷子漫步',p:{n:'宽窄巷子',d:'清代老街区，宽巷子、窄巷子、井巷子三条街 · 约1.5小时',kw:'宽窄巷子'}},
+  {t:'19:00',w:'火锅晚餐',p:{n:'示例老火锅（宽窄巷子店）',d:'已预订6人包间，锅底可选鸳鸯锅',kw:'宽窄巷子 火锅',tel:'028 0000 2002'}}],
+  tip:'宽窄巷子晚上人多，请看管好随身物品，集合时间以导游通知为准。'},
+ {d:'D2',date:'12月6日 周日',title:'看熊猫，逛武侯祠与锦里',sub:'熊猫基地 · 武侯祠 · 锦里',chips:['早餐含','午晚餐自理','住：同D1'],items:[
+  {t:'07:30',w:'酒店门口集合出发（约40分钟）'},
+  {t:'08:15',w:'大熊猫基地',p:{n:'成都大熊猫繁育研究基地',d:'上午熊猫最活跃，建议先去月亮产房和太阳产房 · 约3小时',kw:'成都大熊猫繁育研究基地'}},
+  {t:'14:00',w:'武侯祠',p:{n:'成都武侯祠',d:'三国文化圣地 · 约1.5小时 · 需刷身份证',kw:'成都武侯祠'}},
+  {t:'16:00',w:'锦里古街自由活动，品尝小吃',p:{n:'锦里古街',d:'紧邻武侯祠，推荐三大炮、钟水饺 · 约2小时',kw:'锦里古街'}},
+  {t:'18:30',w:'返回酒店'}],
+  tip:'熊猫基地园区较大，内有观光车（自费），穿舒适的鞋。'},
+ {d:'D3',date:'12月7日 周一',title:'都江堰与青城山',sub:'世界遗产一日',chips:['早午餐含','住：同D1'],items:[
+  {t:'08:00',w:'酒店出发前往都江堰（约1小时）'},
+  {t:'09:00',w:'都江堰景区',p:{n:'都江堰景区',d:'两千多年仍在使用的水利工程，含讲解 · 约2.5小时',kw:'都江堰景区'}},
+  {t:'12:00',w:'农家午餐',p:{n:'示例青城农家乐',d:'青城山脚下，6人桌餐',kw:'青城山 农家乐',tel:'028 0000 3003'}},
+  {t:'13:30',w:'青城山前山，乘索道上山',p:{n:'青城山前山',d:'“青城天下幽” · 含往返索道 · 约3小时',kw:'青城山前山'}},
+  {t:'17:30',w:'返回市区酒店（约1.5小时）'}],
+  tip:'青城山台阶多、湿滑，山上比市区冷 3–5°C，请带外套。'},
+ {d:'D4',date:'12月8日 周二',title:'人民公园喝茶，送机',sub:'慢节奏收尾',chips:['早餐含','午餐自理'],items:[
+  {t:'09:00',w:'退房，行李寄存在车上'},
+  {t:'09:30',w:'人民公园喝盖碗茶',p:{n:'人民公园 鹤鸣茶社',d:'老成都的生活日常，可体验采耳 · 约2小时',kw:'人民公园 鹤鸣茶社'}},
+  {t:'12:00',w:'午餐自理，导游可推荐附近餐厅'},
+  {t:'13:30',w:'送往天府国际机场（建议航班16:00以后）',p:{n:'成都天府国际机场',d:'请提前2小时到达，国内出发在T1/T2，以机票为准',kw:'成都天府国际机场'}}],
+  tip:'退房前检查身份证、充电器等随身物品。'}
+];
+const ov=document.getElementById('ov');
+ov.innerHTML=days.map((x,i)=>'<a class="ov" href="#day'+(i+1)+'"><span class="d">'+x.d+'</span><span><div class="t">'+x.title+'</div><div class="s">'+x.date+' · '+x.sub+'</div></span><span class="go">查看 ›</span></a>').join('');
+document.getElementById('meetActs').innerHTML=navBtn('成都天府国际机场 T1','导航到机场')+telBtn('138 0000 1234','联系导游');
+const place=p=>'<div class="place"><div class="pn">'+p.n+'</div><div class="pd">'+p.d+'</div><div class="acts">'+navBtn(p.kw)+(p.tel?telBtn(p.tel,'电话'):'')+'</div></div>';
+document.getElementById('days').innerHTML=days.map((x,i)=>'<section class="day" id="day'+(i+1)+'"><div class="dhead"><span class="no">'+x.d+'</span><span class="date">'+x.date+'</span></div><h2>'+x.title+'</h2><div class="chips">'+x.chips.map(c=>'<span>'+c+'</span>').join('')+'</div><ol class="sched">'+x.items.map(it=>'<li><span class="time">'+it.t+'</span><div><div class="what">'+it.w+'</div>'+(it.p?place(it.p):'')+'</div></li>').join('')+'</ol><div class="tip">'+x.tip+'</div></section>').join('');
+}
+</script>
+</body>
+</html>
