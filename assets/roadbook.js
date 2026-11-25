@@ -15,7 +15,8 @@
   var TIME_RE = /^(\d{1,2}[:：]\d{2}|上午|下午|中午|晚上|早上|傍晚|全天|早餐后|午餐后|晚餐后)\s*[：:]?\s*/;
   var DAY_RE = /^(?:D\s*(\d+)|第\s*([一二三四五六七八九十\d]+)\s*天|Day\s*(\d+))\s*[：:、.\-]?\s*/i;
   var PHONE_RE = /1\d{2}[\s-]?\d{4}[\s-]?\d{4}|0\d{2,3}[\s-]?\d{4}[\s-]?\d{4}/;
-  var NOT_STOP = /机场|酒店|客栈|宾馆|民宿|饭店|火车站|高铁站|度假村/;
+  var GENERIC = /^(早餐|午餐|晚餐|用餐|酒店|市区|自由活动|休息|返程|送机|接机|集合)$/;
+  var NOT_STOP =/机场|酒店|客栈|宾馆|民宿|饭店|火车站|高铁站|度假村/;
   var WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   var CN_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
 
@@ -155,18 +156,32 @@
       var items = (Array.isArray(d.items) ? d.items : []).map(function (it) {
         return { t: str(it.t), w: str(it.w), p: arr(it.p) };
       }).filter(function (it) { return it.w; });
-      var desc = {}, places = [];
+      var desc = {}, info = {}, places = [];
       (Array.isArray(d.places) ? d.places : []).forEach(function (p) {
-        var n = str(p && p.name); if (!n) return;
+        var n = str(p && p.name); if (!n || GENERIC.test(n)) return;
         if (places.indexOf(n) < 0) places.push(n);
         if (str(p.desc)) desc[n] = str(p.desc);
+        var first = function (v) { return str(v).split(/\s+\/\s+/)[0]; };
+        info[n] = { local: first(p.local), en: first(p.en), address: str(p.address), city: str(p.city), country: str(p.country) };
       });
-      items.forEach(function (it) { it.p.forEach(function (n) { if (places.indexOf(n) < 0) places.push(n); }); });
+      items.forEach(function (it) {
+        it.p = it.p.filter(function (n) { return !GENERIC.test(n); });
+        it.p.forEach(function (n) { if (places.indexOf(n) < 0) places.push(n); });
+      });
       var text = items.map(function (it) { return (it.t ? it.t + ' ' : '') + it.w; }).join('\n');
       data.days.push({
         title: str(d.title) || (rule.days[i] && rule.days[i].title) || '第' + (i + 1) + '天',
-        text: text, items: items, places: places, placeDesc: desc, placesEdited: true,
+        text: text, items: items, places: places, placeDesc: desc, placeInfo: info, placesEdited: true,
         ai: true, aiChips: arr(d.chips), chips: mergeChips(arr(d.chips), ruleChips(text)), tip: str(d.tip)
+      });
+    });
+    var counts = {};
+    data.days.forEach(function (d) { Object.keys(d.placeInfo).forEach(function (n) { var c = d.placeInfo[n].country; if (c) counts[c] = (counts[c] || 0) + 1; }); });
+    var main = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0] || '';
+    if (isAbroad(main)) data.days.forEach(function (d) {
+      d.places.forEach(function (n) {
+        var f = d.placeInfo[n] || (d.placeInfo[n] = { local: '', en: '', address: '', city: '', country: '' });
+        if (!f.country) f.country = main;
       });
     });
     return data;
@@ -213,7 +228,12 @@
     '.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.chips span{font-size:13px;border:1px solid var(--line);border-radius:999px;padding:3px 10px}' +
     '.sched{list-style:none;margin:0;padding:0}.sched li{display:grid;grid-template-columns:4.4em minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.sched li:last-child{border-bottom:0}' +
     '.time{font-variant-numeric:tabular-nums;font-size:17px;font-weight:700;white-space:nowrap}.what{font-weight:600}' +
-    '.place{margin-top:8px;background:var(--leaf);border-radius:12px;padding:10px 12px}.ph{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}.place .pn{font-weight:600}.pd{margin:6px 0 0;font-size:14px;color:var(--muted)}.acts{display:flex;flex-wrap:wrap;gap:8px}' +
+    '.place{margin-top:8px;background:var(--leaf);border-radius:12px;padding:10px 12px}.ph{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}.place .pn{font-weight:600}.addr{font-size:13px;color:var(--muted);margin-top:2px}.pd{margin:6px 0 0;font-size:14px;color:var(--muted)}.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}' +
+    '.notice{background:var(--leaf);border-radius:14px;padding:14px 16px}.notice h3{font-size:18px;margin-bottom:6px}.notice ul{margin:0;padding-left:1.1em}.notice li{margin:4px 0;font-size:15px}' +
+    '.drv{display:none;position:fixed;inset:0;z-index:20;background:#fff;color:#111;padding:64px 22px calc(28px + env(safe-area-inset-bottom,0px));flex-direction:column;justify-content:center;gap:16px;overflow:auto}.drv:target{display:flex}' +
+    '.drv .x{position:absolute;top:16px;right:16px;font-size:16px;padding:8px 16px;border:1.5px solid #111;border-radius:999px;text-decoration:none;color:#111}' +
+    '.drv .ask{font-size:20px;color:#444}.drv .ask.en{font-size:16px;color:#777;margin-top:-10px}.drv .big{font-size:clamp(36px,11vw,60px);font-weight:700;line-height:1.2;overflow-wrap:anywhere}' +
+    '.drv .addr2{font-size:clamp(22px,6.5vw,32px);line-height:1.4;overflow-wrap:anywhere}.drv .en2{font-size:20px;color:#333}.drv .cn{font-size:16px;color:#666}.drv small{font-size:14px;color:#888}' +
     '.btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:999px;font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid var(--chili);color:var(--chili);white-space:nowrap}.btn.solid{background:var(--chili);color:#fff}.btn svg{width:16px;height:16px;flex:none}' +
     '.tip{margin-top:12px;font-size:15px;border-left:3px solid var(--chili);padding:2px 0 2px 12px}' +
     '.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.box{border:1px solid var(--line);border-radius:14px;padding:14px 16px}.box h3{font-size:18px;margin-bottom:6px}.box ul{margin:0;padding-left:1.1em}.box li{margin:4px 0}.notes{margin:0;padding-left:1.2em}.notes li{margin:6px 0}' +
@@ -221,6 +241,34 @@
     '.bar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}.bar .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px}' +
     '.call{display:flex;flex-direction:column;justify-content:center;min-height:52px;border-radius:14px;padding:6px 12px;text-decoration:none;background:var(--green);color:#fff}.call.alt{background:var(--leaf);color:var(--ink)}.call b{font-size:15px}.call small{font-size:13px;opacity:.85}' +
     '@media(min-width:700px){.cover .in{padding:40px 32px 0}.stops{padding:0 32px 26px}section{padding:32px 32px 8px}footer{padding:32px}}';
+
+  function isAbroad(country) {
+    country = (country || '').trim();
+    return !!country && !/^(中国|中华人民共和国|China)$/i.test(country);
+  }
+  function uniqJoin(parts) {
+    var out = [];
+    parts.forEach(function (p) {
+      p = (p || '').trim();
+      if (p && !out.some(function (o) { return o.indexOf(p) >= 0; })) out.push(p);
+    });
+    return out.join(', ');
+  }
+  var PLEASE = {
+    '埃及': 'من فضلك خذني إلى هذا المكان', '土耳其': 'Lütfen beni bu adrese götürün', '日本': 'この場所までお願いします',
+    '韩国': '이곳으로 가 주세요', '泰国': 'กรุณาพาฉันไปที่นี่', '法国': 'Emmenez-moi à cette adresse, s’il vous plaît',
+    '意大利': 'Mi porti a questo indirizzo, per favore', '西班牙': 'Lléveme a esta dirección, por favor', '德国': 'Bitte bringen Sie mich zu dieser Adresse'
+  };
+  function driverPage(dv) {
+    var f = dv.f;
+    var ask = PLEASE[f.country];
+    return '<div class="drv" id="' + dv.id + '" role="dialog" aria-label="给司机看：' + esc(dv.cn) + '"><a class="x" href="#' + dv.back + '">关闭</a>' +
+      (ask ? '<div class="ask" dir="auto">' + esc(ask) + '</div>' : '') + '<div class="ask en">Please take me here</div>' +
+      '<div class="big" dir="auto">' + esc(f.local || f.en || dv.cn) + '</div>' +
+      (f.address ? '<div class="addr2" dir="auto">' + esc(f.address) + '</div>' : '') +
+      (f.en && f.en !== f.local ? '<div class="en2">' + esc(f.en) + '</div>' : '') +
+      '<div class="cn">' + esc(uniqJoin([dv.cn, f.city, f.country])) + '</div><small>把手机屏幕给司机看</small></div>';
+  }
 
   function hills(n) {
     var pts = [];
@@ -242,7 +290,7 @@
     var nav = function (kw) {
       return 'https://uri.amap.com/search?keyword=' + encodeURIComponent(kw) + (city ? '&city=' + encodeURIComponent(city) : '') + '&src=ai-roadbook';
     };
-    var navBtn = function (kw) { return '<a class="btn solid" href="' + esc(nav(kw)) + '" target="_blank" rel="noopener">' + ICO_NAV + '导航</a>'; };
+    var linkBtn = function (url, label, solid) { return '<a class="btn' + (solid ? ' solid' : '') + '" href="' + esc(url) + '" target="_blank" rel="noopener">' + (solid ? ICO_NAV : '') + esc(label) + '</a>'; };
     var telBtn = function (n) { return '<a class="btn" href="tel:' + esc(n.replace(/[\s-]/g, '')) + '">' + ICO_TEL + esc(n) + '</a>'; };
     var days = data.days || [];
     var stops = [];
@@ -252,13 +300,35 @@
       days.length && '<span>' + days.length + '天' + (nights ? nights + '晚' : '') + '</span>',
       data.pax && '<span>' + esc(data.pax) + '人</span>'].filter(Boolean).join('');
 
+    var drivers = [], abroadAny = false;
     var dayHtml = days.map(function (d, i) {
       var places = (d.places || []).slice();
       var used = [];
       var desc = d.placeDesc || {};
+      var info = d.placeInfo || {};
+      var mapBtns = function (p) {
+        var f = info[p] || {};
+        var abroad = isAbroad(f.country);
+        var q = f.local ? uniqJoin([f.local, f.address]) : uniqJoin([f.en || p, f.address, f.city, f.country]);
+        if (!abroad) {
+          var c = f.city || city;
+          var amap = 'https://uri.amap.com/search?keyword=' + encodeURIComponent(p) + (c ? '&city=' + encodeURIComponent(c) : '') + '&callnative=1&src=ai-roadbook';
+          return linkBtn(amap, '高德地图', true) + linkBtn('https://maps.apple.com/?q=' + encodeURIComponent(uniqJoin([p, f.address, c])), '苹果地图');
+        }
+        abroadAny = true;
+        var id = 'drv-' + (drivers.length + 1);
+        drivers.push({ id: id, back: 'day' + (i + 1), cn: p, f: f });
+        return linkBtn('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q), 'Google 地图', true) +
+          linkBtn('https://maps.apple.com/?q=' + encodeURIComponent(q), '苹果地图') +
+          '<a class="btn" href="#' + id + '">给司机看</a>';
+      };
       var card = function (p, phone) {
-        return '<div class="place"><div class="ph"><span class="pn">' + esc(p) + '</span><span class="acts">' + navBtn(p) + (phone ? telBtn(phone) : '') + '</span></div>' +
-          (desc[p] ? '<p class="pd">' + esc(desc[p]) + '</p>' : '') + '</div>';
+        var f = info[p] || {};
+        var sub = uniqJoin([f.local && f.local !== p ? f.local : '', f.address]);
+        return '<div class="place"><div class="ph"><span class="pn">' + esc(p) + '</span></div>' +
+          (sub ? '<div class="addr" dir="auto">' + esc(sub) + '</div>' : '') +
+          (desc[p] ? '<p class="pd">' + esc(desc[p]) + '</p>' : '') +
+          '<div class="acts">' + mapBtns(p) + (phone ? telBtn(phone) : '') + '</div></div>';
       };
       var items = (d.items || []).map(function (it) {
         var inItem = it.p && it.p.length ? places.filter(function (p) { return it.p.indexOf(p) >= 0 && used.indexOf(p) < 0; })
@@ -296,8 +366,10 @@
     return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' + esc(data.title || '行程路书') + '</title><style>' + CSS + '</style></head><body>' +
       '<header class="cover"><div class="wrap"><div class="in"><div class="org">' + esc(data.org || '') + ' · 出行手册</div><h1>' + esc(data.title || '行程路书') + '</h1><div class="meta">' + meta + '</div></div>' +
       hills(Math.min(Math.max(stops.length, 2), 6)) + '<div class="stops">' + stops.slice(0, 8).map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div></div></header>' +
-      '<main class="wrap">' + (days.length ? '<section><h2>行程一览</h2><div class="overview">' + overview + '</div></section>' : '') + dayHtml + fees + notes + '</main>' +
-      '<footer class="wrap">' + esc(data.org || '') + ' · 本路书由 AI 路书工具生成，地点导航使用高德地图按名称搜索，出发前请以导游通知为准。</footer>' + bar + '</body></html>';
+      '<main class="wrap">' + (days.length ? '<section><h2>行程一览</h2><div class="overview">' + overview + '</div></section>' : '') +
+      (abroadAny ? '<section><div class="notice"><h3>出境导航小贴士</h3><ul><li>出境后建议在当地购买电话卡或开通国际流量。用国内手机卡漫游时，Google 地图可能打不开，可以改用苹果地图。</li><li>打车或问路时，点地点旁边的「给司机看」，把屏幕给司机看，上面是当地语言的地名和地址。</li></ul></div></section>' : '') +
+      dayHtml + fees + notes + '</main>' +
+      '<footer class="wrap">' + esc(data.org || '') + ' · 本路书由 AI 路书工具生成。地名和地址由 AI 整理，出发前请以导游通知为准。</footer>' + bar + drivers.map(driverPage).join('') + '</body></html>';
   }
 
   global.Roadbook = { parseItinerary: parseItinerary, buildDay: buildDay, detectPlaces: detectPlaces, renderRoadbook: renderRoadbook, fromAI: fromAI };
