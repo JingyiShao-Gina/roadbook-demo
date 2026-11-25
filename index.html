@@ -34,7 +34,17 @@ button,.dl{font:inherit;font-size:15px;min-height:40px;padding:0 16px;border-rad
 button:hover{border-color:var(--green)}
 button.primary{background:var(--chili);border-color:var(--chili);color:#fff;font-weight:600}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.ai{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.ai i{width:10px;height:10px;border-radius:50%;background:var(--muted)}
+.ai.on i{background:#2e9d5b}
+.ai.off i{background:#d99a1e}
+.ai b{display:block;font-size:15px}
+.ai small{display:block;font-size:13px;color:var(--muted)}
+.ai button{min-height:34px;font-size:14px;padding:0 12px}
 .status{font-size:14px;color:var(--muted);margin-top:10px;min-height:1.5em}
+.status.busy::before{content:"";display:inline-block;width:12px;height:12px;margin-right:8px;border:2px solid var(--line);border-top-color:var(--chili);border-radius:50%;vertical-align:-1px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.status.busy::before{animation:none}}
 .status.err{color:var(--chili)}
 details{margin-top:12px}
 summary{cursor:pointer;color:var(--muted)}
@@ -65,9 +75,11 @@ textarea{resize:vertical;line-height:1.5}
   <main>
     <div class="step">
       <h2><span>1</span>导入行程资料</h2>
+      <div class="ai" id="aiBox"><i id="aiDot"></i><div><b id="aiTitle">正在检查 AI 助手…</b><small id="aiHint"></small></div><button type="button" id="aiRecheck">重新检查</button></div>
       <label class="drop" id="drop" for="file"><b>点击上传，或把文件拖到这里</b><small>支持 Word（.docx）、PDF、TXT</small></label>
       <input type="file" id="file" accept=".docx,.pdf,.txt">
       <div class="row"><span class="empty">没有资料？试试示例：</span><button type="button" id="sWord">大理丽江 5 日（Word）</button><button type="button" id="sPdf">西安 3 日（PDF）</button></div>
+      <div class="row"><button type="button" class="primary" id="aiRedo" hidden>用 AI 重新整理当前资料</button></div>
       <details id="pasteBox"><summary>或者直接粘贴行程文字</summary><textarea id="paste" rows="8" placeholder="第一天 抵达成都&#10;14:00 机场接机，入住春熙路示例酒店&#10;……"></textarea><div class="row"><button type="button" id="parseBtn">解析这段文字</button></div></details>
       <div class="status" id="status" role="status"></div>
     </div>
@@ -100,7 +112,41 @@ const $ = id => document.getElementById(id);
 let data = null, html = '', timer = 0;
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const say = (msg, err) => { const s = $('status'); s.textContent = msg; s.className = 'status' + (err ? ' err' : ''); };
+const say = (msg, err, busy) => { const s = $('status'); s.textContent = msg; s.className = 'status' + (err ? ' err' : '') + (busy ? ' busy' : ''); };
+
+const AI = { url: 'http://localhost:8787', ok: false, models: ['glm-4-flash-250414', 'glm-4.5-flash'], prompt: '' };
+async function checkAI() {
+  const box = $('aiBox');
+  try {
+    const r = await fetch(AI.url + '/health', { cache: 'no-store' });
+    AI.ok = r.ok && (await r.json()).ok === true;
+  } catch (e) { AI.ok = false; }
+  box.className = 'ai ' + (AI.ok ? 'on' : 'off');
+  $('aiTitle').textContent = AI.ok ? 'AI 已连接（智谱 GLM-4-Flash，免费）' : 'AI 未连接，当前使用规则识别';
+  $('aiHint').textContent = AI.ok ? '上传的资料会由 AI 整理，并自动补充景点介绍和每日提示。' : '在电脑上双击「文档 › AI路书MVP › AI助手 › 启动AI助手.bat」，然后点「重新检查」。';
+  $('aiRedo').hidden = !(AI.ok && data);
+  return AI.ok;
+}
+async function aiParse(text) {
+  if (!AI.prompt) AI.prompt = await (await fetch('assets/prompt.txt', { cache: 'no-store' })).text();
+  let lastErr = '';
+  for (const model of AI.models) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await fetch(AI.url + '/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model, temperature: 0.3, max_tokens: 8000, response_format: { type: 'json_object' }, thinking: { type: 'disabled' },
+            messages: [{ role: 'system', content: AI.prompt }, { role: 'user', content: text.slice(0, 12000) }] }) });
+        const j = await r.json();
+        if (!r.ok || !j.choices) { lastErr = (j.error && j.error.message) || ('HTTP ' + r.status); await new Promise(z => setTimeout(z, 3000)); continue; }
+        const content = j.choices[0].message.content.replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/, '');
+        const obj = JSON.parse(content.slice(content.indexOf('{'), content.lastIndexOf('}') + 1));
+        if (!Array.isArray(obj.days) || !obj.days.length) { lastErr = 'AI 没有返回每日行程'; continue; }
+        return Roadbook.fromAI(obj, text);
+      } catch (e) { lastErr = e.message || String(e); }
+    }
+  }
+  throw new Error(lastErr || 'AI 整理失败');
+}
 
 async function pdfText(buf) {
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
@@ -128,21 +174,36 @@ async function readFile(name, buf) {
   throw new Error('暂不支持 .' + ext + ' 文件，请上传 .docx、.pdf 或 .txt（老版 .doc 请先另存为 .docx）');
 }
 
-async function load(name, buf) {
-  say('正在读取「' + name + '」…');
+async function load(name, buf, useAI) {
+  say('正在读取「' + name + '」…', false, true);
   try {
     const text = await readFile(name, buf);
     if (!text.trim()) throw new Error('没有读到文字。如果是扫描件或图片 PDF，目前还不支持，请换成可复制文字的文件');
-    useText(text, '已读取「' + name + '」');
+    await useText(text, '已读取「' + name + '」', useAI);
   } catch (e) { say(e.message || '读取失败', true); }
 }
 
-function useText(text, label) {
+let busy = false;
+async function useText(text, label, useAI) {
+  $('paste').value = text.trim();
+  if (useAI !== false && await checkAI()) {
+    if (busy) return; busy = true;
+    say(label + '，AI 正在整理行程、补充景点介绍（大约 30–60 秒）…', false, true);
+    try {
+      data = await aiParse(text);
+      say(label + '：AI 整理出 ' + data.days.length + ' 天行程、' + data.days.reduce((n, d) => n + d.places.length, 0) + ' 个地点，并补充了景点介绍。请在第 2 步核对。');
+      buildForm(); refresh(); busy = false; checkAI(); return;
+    } catch (e) {
+      busy = false;
+      data = Roadbook.parseItinerary(text);
+      say('AI 暂时不可用（' + e.message + '），已改用规则识别。可以稍后点「用 AI 重新整理」。', true);
+      buildForm(); refresh(); checkAI(); return;
+    }
+  }
   data = Roadbook.parseItinerary(text);
   if (!data.days.length) { say(label + '，但没有找到“第一天 / D1”这样的每日行程标记，请检查格式或直接粘贴文字修改。', true); }
-  else say(label + '：识别出 ' + data.days.length + ' 天行程、' + data.days.reduce((n, d) => n + d.places.length, 0) + ' 个地点。请在第 2 步核对。');
-  $('paste').value = text.trim();
-  buildForm(); refresh();
+  else say(label + '：规则识别出 ' + data.days.length + ' 天行程、' + data.days.reduce((n, d) => n + d.places.length, 0) + ' 个地点。请在第 2 步核对。' + (AI.ok ? '想要更完整的内容，可以点「用 AI 重新整理」。' : ''));
+  buildForm(); refresh(); checkAI();
 }
 
 function buildForm() {
@@ -202,10 +263,12 @@ const drop = $('drop');
 ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
 ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', async e => { const f = e.dataTransfer.files[0]; if (f) load(f.name, await f.arrayBuffer()); });
-async function sample(path, name) {
-  try { const r = await fetch(path); if (!r.ok) throw new Error(); load(name, await r.arrayBuffer()); }
+async function sample(path, name, useAI) {
+  try { const r = await fetch(path); if (!r.ok) throw new Error(); load(name, await r.arrayBuffer(), useAI); }
   catch (e) { say('示例文件加载失败，请直接上传文件试试。', true); }
 }
+$('aiRecheck').addEventListener('click', checkAI);
+$('aiRedo').addEventListener('click', () => { const t = $('paste').value; if (t.trim()) useText(t, '已重新整理', true); });
 $('sWord').addEventListener('click', () => sample('samples/dali-lijiang-5d.docx', '大理丽江5日行程.docx'));
 $('sPdf').addEventListener('click', () => sample('samples/xian-3d.pdf', '西安3日行程.pdf'));
 $('parseBtn').addEventListener('click', () => { const t = $('paste').value; if (t.trim()) useText(t, '已解析粘贴的文字'); });
@@ -222,7 +285,8 @@ $('openNew').addEventListener('click', () => {
   window.open(URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' })), '_blank');
 });
 window.__roadbook = { get html() { return html; }, get data() { return data; } };
-sample('samples/dali-lijiang-5d.docx', '大理丽江5日行程.docx');
+checkAI();
+sample('samples/dali-lijiang-5d.docx', '大理丽江5日行程.docx', false);
 }
 </script>
 </body>

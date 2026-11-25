@@ -54,6 +54,30 @@
     return { key: k, rest: m[2] };
   }
 
+  function ruleChips(all) {
+    var chips = [];
+    ['早餐', '午餐', '晚餐'].forEach(function (meal) {
+      var m = all.match(new RegExp(meal + '(?!后)[^，。；\\n]{0,14}?(不含|自理|含)'));
+      if (m) chips.push(meal + (m[1] === '含' ? '含' : '自理'));
+    });
+    var hotel = all.match(/(?:入住|住宿|宿)[:：]?\s*([^\s，。,；;（(]{2,20}?(?:酒店|宾馆|客栈|民宿|饭店|度假村))/);
+    if (hotel) chips.push('住：' + hotel[1]);
+    else if (/住宿同前|同前住宿|连住/.test(all)) chips.push('住：同前一晚');
+    return chips;
+  }
+
+  function mergeChips(aiChips, rule) {
+    var out = (aiChips || []).filter(Boolean).slice();
+    var hasStay = out.some(function (c) { return /^住/.test(c); });
+    rule.forEach(function (c) {
+      if (/^住/.test(c) && hasStay) return;
+      var meal = c.slice(0, 2);
+      if (/餐$/.test(meal) && out.some(function (x) { return x.indexOf(meal) === 0; })) return;
+      if (out.indexOf(c) < 0) out.push(c);
+    });
+    return out;
+  }
+
   /* 根据一天的原始文字，推导时间线、含餐、住宿、地点 */
   function buildDay(day) {
     var lines = day.text.split(/\n+/).map(function (l) { return l.trim(); }).filter(Boolean);
@@ -62,6 +86,7 @@
       return { t: m ? m[1].replace('：', ':') : '', w: m ? l.slice(m[0].length) : l };
     });
     var all = lines.join('\n');
+    if (day.ai) { day.chips = mergeChips(day.aiChips, ruleChips(all)); return day; }
     var chips = [];
     ['早餐', '午餐', '晚餐'].forEach(function (meal) {
       var re = new RegExp(meal + '(?!后)[^，。；\\n]{0,14}?(不含|自理|含)');
@@ -110,6 +135,43 @@
     return data;
   }
 
+  /* 把 AI 返回的 JSON 整理成和规则识别一样的数据结构，并用规则结果补齐遗漏 */
+  function fromAI(obj, rawText) {
+    var rule = parseItinerary(rawText);
+    var str = function (v) { return v == null ? '' : String(v).trim(); };
+    var arr = function (v) { return Array.isArray(v) ? v.map(str).filter(Boolean) : []; };
+    var data = {
+      title: str(obj.title) || rule.title, org: rule.org,
+      startDate: /^\d{4}-\d{2}-\d{2}$/.test(str(obj.startDate)) ? str(obj.startDate) : rule.startDate,
+      pax: str(obj.pax).replace(/\D/g, '') || rule.pax, city: str(obj.city),
+      contacts: (Array.isArray(obj.contacts) ? obj.contacts : []).filter(function (c) { return c && c.tel; }).slice(0, 2)
+        .map(function (c) { return { role: /司机/.test(c.role) ? '司机' : '导游', name: str(c.name), tel: str(c.tel) }; }),
+      include: arr(obj.include).length ? arr(obj.include) : rule.include,
+      exclude: arr(obj.exclude).length ? arr(obj.exclude) : rule.exclude,
+      notes: arr(obj.notes).length ? arr(obj.notes) : rule.notes, days: [], ai: true
+    };
+    if (!data.contacts.length) data.contacts = rule.contacts;
+    (Array.isArray(obj.days) ? obj.days : []).forEach(function (d, i) {
+      var items = (Array.isArray(d.items) ? d.items : []).map(function (it) {
+        return { t: str(it.t), w: str(it.w), p: arr(it.p) };
+      }).filter(function (it) { return it.w; });
+      var desc = {}, places = [];
+      (Array.isArray(d.places) ? d.places : []).forEach(function (p) {
+        var n = str(p && p.name); if (!n) return;
+        if (places.indexOf(n) < 0) places.push(n);
+        if (str(p.desc)) desc[n] = str(p.desc);
+      });
+      items.forEach(function (it) { it.p.forEach(function (n) { if (places.indexOf(n) < 0) places.push(n); }); });
+      var text = items.map(function (it) { return (it.t ? it.t + ' ' : '') + it.w; }).join('\n');
+      data.days.push({
+        title: str(d.title) || (rule.days[i] && rule.days[i].title) || '第' + (i + 1) + '天',
+        text: text, items: items, places: places, placeDesc: desc, placesEdited: true,
+        ai: true, aiChips: arr(d.chips), chips: mergeChips(arr(d.chips), ruleChips(text)), tip: str(d.tip)
+      });
+    });
+    return data;
+  }
+
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (ch) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
@@ -151,7 +213,7 @@
     '.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.chips span{font-size:13px;border:1px solid var(--line);border-radius:999px;padding:3px 10px}' +
     '.sched{list-style:none;margin:0;padding:0}.sched li{display:grid;grid-template-columns:4.4em minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.sched li:last-child{border-bottom:0}' +
     '.time{font-variant-numeric:tabular-nums;font-size:17px;font-weight:700;white-space:nowrap}.what{font-weight:600}' +
-    '.place{margin-top:8px;background:var(--leaf);border-radius:12px;padding:10px 12px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}.place .pn{font-weight:600}.acts{display:flex;flex-wrap:wrap;gap:8px}' +
+    '.place{margin-top:8px;background:var(--leaf);border-radius:12px;padding:10px 12px}.ph{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}.place .pn{font-weight:600}.pd{margin:6px 0 0;font-size:14px;color:var(--muted)}.acts{display:flex;flex-wrap:wrap;gap:8px}' +
     '.btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:999px;font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid var(--chili);color:var(--chili);white-space:nowrap}.btn.solid{background:var(--chili);color:#fff}.btn svg{width:16px;height:16px;flex:none}' +
     '.tip{margin-top:12px;font-size:15px;border-left:3px solid var(--chili);padding:2px 0 2px 12px}' +
     '.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.box{border:1px solid var(--line);border-radius:14px;padding:14px 16px}.box h3{font-size:18px;margin-bottom:6px}.box ul{margin:0;padding-left:1.1em}.box li{margin:4px 0}.notes{margin:0;padding-left:1.2em}.notes li{margin:6px 0}' +
@@ -193,21 +255,23 @@
     var dayHtml = days.map(function (d, i) {
       var places = (d.places || []).slice();
       var used = [];
+      var desc = d.placeDesc || {};
+      var card = function (p, phone) {
+        return '<div class="place"><div class="ph"><span class="pn">' + esc(p) + '</span><span class="acts">' + navBtn(p) + (phone ? telBtn(phone) : '') + '</span></div>' +
+          (desc[p] ? '<p class="pd">' + esc(desc[p]) + '</p>' : '') + '</div>';
+      };
       var items = (d.items || []).map(function (it) {
-        var inItem = places.filter(function (p) { return it.w.indexOf(p) >= 0; });
+        var inItem = it.p && it.p.length ? places.filter(function (p) { return it.p.indexOf(p) >= 0 && used.indexOf(p) < 0; })
+          : places.filter(function (p) { return it.w.indexOf(p) >= 0; });
         inItem = inItem.filter(function (p) { return !inItem.some(function (q) { return q !== p && q.indexOf(p) >= 0; }); });
         inItem.forEach(function (p) { if (used.indexOf(p) < 0) used.push(p); });
         var phone = it.w.match(PHONE_RE);
-        var cards = inItem.map(function (p, k) {
-          return '<div class="place"><span class="pn">' + esc(p) + '</span><span class="acts">' + navBtn(p) + (k === 0 && phone ? telBtn(phone[0]) : '') + '</span></div>';
-        }).join('');
+        var cards = inItem.map(function (p, k) { return card(p, k === 0 && phone ? phone[0] : ''); }).join('');
         return '<li><span class="time">' + esc(it.t) + '</span><div><div class="what">' + esc(it.w) + '</div>' + cards + '</div></li>';
       }).join('');
       var extra = places.filter(function (p) { return used.indexOf(p) < 0; });
       if (extra.length) {
-        items += '<li><span class="time">地点</span><div>' + extra.map(function (p) {
-          return '<div class="place"><span class="pn">' + esc(p) + '</span><span class="acts">' + navBtn(p) + '</span></div>';
-        }).join('') + '</div></li>';
+        items += '<li><span class="time">地点</span><div>' + extra.map(function (p) { return card(p, ''); }).join('') + '</div></li>';
       }
       return '<section class="day" id="day' + (i + 1) + '"><div class="dhead"><span class="no">D' + (i + 1) + '</span><span class="date">' + esc(dayDate(data.startDate, i)) + '</span></div>' +
         '<h2>' + esc(d.title) + '</h2>' + (d.chips && d.chips.length ? '<div class="chips">' + d.chips.map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' : '') +
@@ -236,5 +300,5 @@
       '<footer class="wrap">' + esc(data.org || '') + ' · 本路书由 AI 路书工具生成，地点导航使用高德地图按名称搜索，出发前请以导游通知为准。</footer>' + bar + '</body></html>';
   }
 
-  global.Roadbook = { parseItinerary: parseItinerary, buildDay: buildDay, detectPlaces: detectPlaces, renderRoadbook: renderRoadbook };
+  global.Roadbook = { parseItinerary: parseItinerary, buildDay: buildDay, detectPlaces: detectPlaces, renderRoadbook: renderRoadbook, fromAI: fromAI };
 })(window);
