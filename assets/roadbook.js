@@ -162,7 +162,8 @@
         if (places.indexOf(n) < 0) places.push(n);
         if (str(p.desc)) desc[n] = str(p.desc);
         var first = function (v) { return str(v).split(/\s+\/\s+/)[0]; };
-        info[n] = { local: first(p.local), en: first(p.en), address: str(p.address), city: str(p.city), country: str(p.country) };
+        info[n] = { local: first(p.local), en: first(p.en), address: str(p.address), city: str(p.city), country: str(p.country),
+          translated: p.translated === true || p.translated === 'true' };
       });
       items.forEach(function (it) {
         it.p = it.p.filter(function (n) { return !GENERIC.test(n); });
@@ -269,10 +270,11 @@
     var ask = PLEASE[f.country];
     return '<div class="drv" id="' + dv.id + '" role="dialog" aria-label="给司机看：' + esc(dv.cn) + '"><a class="x" href="#' + dv.back + '">关闭</a>' +
       (ask ? '<div class="ask" dir="auto">' + esc(ask) + '</div>' : '') + '<div class="ask en">Please take me here</div>' +
-      '<div class="big" dir="auto">' + esc(f.local || f.en || dv.cn) + '</div>' +
+      '<div class="big" dir="auto">' + esc(f.local || f.en) + '</div>' +
       (f.address ? '<div class="addr2" dir="auto">' + esc(f.address) + '</div>' : '') +
       (f.en && f.en !== f.local ? '<div class="en2">' + esc(f.en) + '</div>' : '') +
-      '<div class="cn">' + esc(uniqJoin([dv.cn, f.city, f.country])) + '</div><small>把手机屏幕给司机看</small></div>';
+      '<div class="cn">' + esc(uniqJoin([dv.cn, f.city, f.country])) + '</div>' +
+      (f.translated ? '<small>名称为 AI 翻译，请以酒店确认单上的名称为准</small>' : '') + '<small>把手机屏幕给司机看</small></div>';
   }
 
   function hills(n) {
@@ -327,7 +329,7 @@
           linkBtn('https://maps.apple.com/?daddr=' + encodeURIComponent(dest) + '&dirflg=d', '苹果地图导航');
         if (hasLocal(f)) {
           var id = 'drv-' + (drivers.length + 1);
-          drivers.push({ id: id, back: 'day' + (i + 1), cn: p, f: { local: f.local, en: f.en, address: f.address, city: f.city, country: country } });
+          drivers.push({ id: id, back: 'day' + (i + 1), cn: p, f: { local: f.local, en: f.en, address: f.address, city: f.city, country: country, translated: f.translated } });
           out += '<a class="btn" href="#' + id + '">给司机看</a>';
         }
         return out;

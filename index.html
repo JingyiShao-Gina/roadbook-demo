@@ -259,7 +259,8 @@ function placeRows(d) {
       return '<div class="prow"><b>' + esc(p) + '</b>' +
         '<input aria-label="' + esc(p) + ' 当地语言名称" data-pn="' + esc(p) + '" data-pf="local" placeholder="当地语言名称，如 Sultan Ahmet Camii" value="' + esc(f.local || '') + '">' +
         '<input aria-label="' + esc(p) + ' 当地地址" data-pn="' + esc(p) + '" data-pf="address" placeholder="当地语言地址" value="' + esc(f.address || '') + '">' +
-        (needsLocal(d, p) ? '<small class="warn">出境地点缺少外文名称：导航只能用中文名搜索，也不会显示「给司机看」。请填写当地语言或英文名称</small>' : '') + '</div>';
+        (needsLocal(d, p) ? '<small class="warn">出境地点缺少外文名称：导航只能用中文名搜索，也不会显示「给司机看」。请填写当地语言或英文名称</small>' : '') +
+        (f.translated && f.local ? '<small class="warn">这个名称是 AI 翻译的，请用酒店确认单或出团通知上的外文名核对、替换</small>' : '') + '</div>';
     }).join('') + '</details>';
 }
 function needsLocal(d, p) {
@@ -274,6 +275,7 @@ function onEdit(e) {
     d.placeInfo = d.placeInfo || {};
     const f = d.placeInfo[t.dataset.pn] || (d.placeInfo[t.dataset.pn] = { local: '', en: '', address: '', city: '', country: '' });
     f[t.dataset.pf] = t.value.trim();
+    if (t.dataset.pf === 'local') { f.translated = false; const tw = [...t.closest('.prow').querySelectorAll('.warn')].find(x => x.textContent.indexOf('AI 翻译') >= 0); if (tw) tw.remove(); }
     const row = t.closest('.prow'), w = row.querySelector('.warn');
     if (needsLocal(d, t.dataset.pn)) { if (!w) row.insertAdjacentHTML('beforeend', '<small class="warn">出境地点缺少外文名称：导航只能用中文名搜索，也不会显示「给司机看」。请填写当地语言或英文名称</small>'); }
     else if (w) w.remove();
