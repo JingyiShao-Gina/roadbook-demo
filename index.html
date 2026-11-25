@@ -65,6 +65,12 @@ textarea{resize:vertical;line-height:1.5}
 .phone iframe{width:100%;height:100%;border:0;display:block}
 .preview p{font-size:13px;color:var(--muted);text-align:center;margin:8px 0 0}
 .empty{color:var(--muted);font-size:14px}
+.pub{margin-top:12px;border:1.5px solid #2e9d5b;border-radius:12px;padding:12px;background:var(--leaf)}
+.pub b{display:block;margin-bottom:8px}
+.pubrow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
+.pub small{display:block;margin-top:8px;font-size:13px;color:var(--muted)}
+a.dl{display:inline-flex;align-items:center;text-decoration:none}
+@media(max-width:600px){.pubrow{grid-template-columns:1fr 1fr}.pubrow input{grid-column:1/-1}}
 @media(max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}.preview{position:static}.phone{height:640px;max-width:420px;margin:0 auto}}
 </style>
 </head>
@@ -91,8 +97,13 @@ textarea{resize:vertical;line-height:1.5}
 
     <div class="step">
       <h2><span>3</span>导出路书</h2>
-      <div class="row" style="margin-top:0"><button type="button" class="primary" id="download">下载路书网页文件</button><button type="button" id="openNew">在新窗口打开预览</button></div>
-      <p class="hint">下载得到一个 .html 文件，可以直接用微信发给客户，也可以发布成网址。</p>
+      <div class="row" style="margin-top:0"><button type="button" class="primary" id="publish">一键发布成网址</button><button type="button" id="download">下载路书网页文件</button><button type="button" id="openNew">在新窗口打开预览</button></div>
+      <div class="pub" id="pubBox" hidden>
+        <b id="pubState">已发布</b>
+        <div class="pubrow"><input id="pubUrl" readonly aria-label="路书网址"><button type="button" id="pubCopy">复制网址</button><a class="dl" id="pubOpen" target="_blank" rel="noopener">打开</a></div>
+        <small id="pubHint"></small>
+      </div>
+      <p class="hint">一键发布需要先启动 AI 助手。发布后的网址<b>任何人都能打开</b>，不要发布含客户个人信息或公司敏感内容的路书。也可以下载 .html 文件直接用微信发送。</p>
       <p class="hint">已生成的示例路书：<a href="dali-lijiang-5d-ai/">大理丽江 5 日 · AI 版</a> · <a href="dali-lijiang-5d/">大理丽江 5 日 · 规则版（来自 Word）</a> · <a href="xian-3d/">西安 3 日（来自 PDF）</a> · <a href="chengdu-4d/">成都 4 日（设计样稿）</a></p>
     </div>
   </main>
@@ -287,6 +298,39 @@ $('openNew').addEventListener('click', () => {
   w.document.open();
   w.document.write(html);
   w.document.close();
+});
+let pubSlug = '', pubFor = null;
+$('publish').addEventListener('click', async () => {
+  if (!html || !data) { say('请先导入行程资料。', true); return; }
+  if (!await checkAI()) { say('一键发布需要先启动 AI 助手：双击「文档 › AI路书MVP › AI助手 › 启动AI助手.bat」，再点「重新检查」。', true); return; }
+  const again = pubFor === data && pubSlug;
+  if (!confirm((again ? '更新已发布的网址？\n\n' : '发布成网址？\n\n') + '发布后，任何拿到网址的人都能打开这份路书。\n请确认里面没有客户姓名、身份证号等个人信息，也没有不能公开的公司资料。')) return;
+  const btn = $('publish'); btn.disabled = true;
+  say(again ? '正在更新已发布的路书…' : '正在发布到网上…', false, true);
+  try {
+    const r = await fetch(AI.url + '/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ html, slug: again ? pubSlug : '', title: data.title || '' }) });
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
+    pubSlug = j.slug; pubFor = data;
+    $('pubBox').hidden = false; $('pubUrl').value = j.url; $('pubOpen').href = j.url;
+    $('pubState').textContent = '已上传，网址正在生效（大约 1 分钟）…';
+    $('pubHint').textContent = '修改内容后再点「一键发布成网址」，会更新这个网址，不会生成新网址。';
+    btn.textContent = '更新已发布的网址';
+    say('上传成功。网址大约 1 分钟后可以打开。');
+    waitLive(j.url);
+  } catch (e) { say('发布失败：' + e.message, true); }
+  btn.disabled = false;
+});
+async function waitLive(url) {
+  for (let i = 0; i < 30; i++) {
+    await new Promise(z => setTimeout(z, 8000));
+    try { const r = await fetch(url + '?t=' + Date.now(), { cache: 'no-store' }); if (r.ok) { $('pubState').textContent = '已发布，网址可以打开了，复制发给对方即可'; return; } } catch (e) {}
+  }
+  $('pubState').textContent = '已上传，但网址还没生效。可以过几分钟再点「打开」试试';
+}
+$('pubCopy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('pubUrl').value); $('pubCopy').textContent = '已复制'; setTimeout(() => $('pubCopy').textContent = '复制网址', 1500); }
+  catch (e) { $('pubUrl').select(); say('请按 Ctrl+C 复制网址。'); }
 });
 window.__roadbook = { get html() { return html; }, get data() { return data; } };
 checkAI();

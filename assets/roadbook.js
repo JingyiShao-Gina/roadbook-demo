@@ -293,7 +293,7 @@
       return '<a class="call' + (i ? ' alt' : '') + '" href="tel:' + esc(c.tel.replace(/[\s-]/g, '')) + '"><b>致电' + esc(c.role) + ' ' + esc(c.name) + '</b><small>' + esc(c.tel) + '</small></a>';
     }).join('') + '</div></nav>' : '';
 
-    return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + esc(data.title || '行程路书') + '</title><style>' + CSS + '</style></head><body>' +
+    return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' + esc(data.title || '行程路书') + '</title><style>' + CSS + '</style></head><body>' +
       '<header class="cover"><div class="wrap"><div class="in"><div class="org">' + esc(data.org || '') + ' · 出行手册</div><h1>' + esc(data.title || '行程路书') + '</h1><div class="meta">' + meta + '</div></div>' +
       hills(Math.min(Math.max(stops.length, 2), 6)) + '<div class="stops">' + stops.slice(0, 8).map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div></div></header>' +
       '<main class="wrap">' + (days.length ? '<section><h2>行程一览</h2><div class="overview">' + overview + '</div></section>' : '') + dayHtml + fees + notes + '</main>' +
