@@ -57,6 +57,12 @@ textarea{resize:vertical;line-height:1.5}
 .daybox .dt{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;margin-bottom:8px}
 .daybox .dt b{font:700 20px "Songti SC","STSong",serif;color:var(--chili)}
 .daybox textarea{min-height:120px}
+.pinfo details{margin-top:8px}
+.prow{display:grid;grid-template-columns:minmax(6em,auto) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;margin-top:8px}
+.prow b{font-size:14px}
+.prow input{font-size:14px;padding:6px 8px}
+.prow .warn{grid-column:1/-1;color:var(--chili);font-size:13px}
+@media(max-width:600px){.prow{grid-template-columns:1fr}}
 .hint{font-size:13px;color:var(--muted);margin:4px 0 0}
 .found{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .found span{font-size:13px;border:1px solid var(--line);border-radius:999px;padding:2px 9px}
@@ -227,7 +233,8 @@ function buildForm() {
     '<div><label class="f" for="f-org">旅行社名称</label><input id="f-org" data-k="org" value="' + esc(data.org) + '"></div>' +
     '<div><label class="f" for="f-start">出发日期</label><input id="f-start" type="date" data-k="startDate" value="' + esc(data.startDate) + '"></div>' +
     '<div><label class="f" for="f-pax">人数</label><input id="f-pax" data-k="pax" inputmode="numeric" value="' + esc(data.pax) + '"></div>' +
-    '<div><label class="f" for="f-city">导航城市（多城市可留空）</label><input id="f-city" data-k="city" value="' + esc(data.city) + '"></div></div>' +
+    '<div><label class="f" for="f-city">导航城市（多城市可留空）</label><input id="f-city" data-k="city" value="' + esc(data.city) + '"></div>' +
+    '<div><label class="f" for="f-country">目的地国家（出境线路填写）</label><input id="f-country" data-k="country" placeholder="例如 土耳其" value="' + esc(data.country || '') + '"></div></div>' +
     '<div class="daybox"><label class="f">联系人（会出现在路书底部，客户可一键拨打）</label>' +
     data.contacts.map((c, i) => '<div class="contact"><input aria-label="角色" data-c="' + i + '" data-ck="role" value="' + esc(c.role) + '"><input aria-label="姓名" data-c="' + i + '" data-ck="name" placeholder="姓名" value="' + esc(c.name) + '"><input aria-label="电话" data-c="' + i + '" data-ck="tel" placeholder="电话" inputmode="tel" value="' + esc(c.tel) + '"></div>').join('') + '</div>' +
     data.days.map((d, i) =>
@@ -235,6 +242,7 @@ function buildForm() {
       '<label class="f" for="d' + i + '-text">行程（一行一项，行首可写时间，如 14:00）</label><textarea id="d' + i + '-text" data-dk="text">' + esc(d.text) + '</textarea>' +
       '<label class="f" for="d' + i + '-places" style="margin-top:8px">可导航的地点（用逗号分隔，可增删）</label><input id="d' + i + '-places" data-dk="places" value="' + esc(d.places.join('，')) + '">' +
       '<div class="found" id="d' + i + '-chips">' + d.chips.map(c => '<span>' + esc(c) + '</span>').join('') + '</div>' +
+      '<div class="pinfo" id="d' + i + '-pinfo">' + placeRows(d) + '</div>' +
       '<label class="f" for="d' + i + '-tip" style="margin-top:8px">当日提示（选填）</label><input id="d' + i + '-tip" data-dk="tip" value="' + esc(d.tip) + '"></div>').join('') +
     '<div class="daybox fields">' +
     '<div><label class="f" for="f-inc">费用包含（一行一项）</label><textarea id="f-inc" rows="5" data-l="include">' + esc(data.include.join('\n')) + '</textarea></div>' +
@@ -242,20 +250,48 @@ function buildForm() {
     '<div style="grid-column:1/-1"><label class="f" for="f-notes">出行提示（一行一项）</label><textarea id="f-notes" rows="4" data-l="notes">' + esc(data.notes.join('\n')) + '</textarea></div></div>';
 }
 
+function placeRows(d) {
+  d.placeInfo = d.placeInfo || {};
+  if (!d.places.length) return '';
+  return '<details' + (d.places.some(p => needsLocal(d, p)) ? ' open' : '') + '><summary>地点的当地名称和地址（导航和「给司机看」会用到）</summary>' +
+    d.places.map(p => {
+      const f = d.placeInfo[p] || {};
+      return '<div class="prow"><b>' + esc(p) + '</b>' +
+        '<input aria-label="' + esc(p) + ' 当地语言名称" data-pn="' + esc(p) + '" data-pf="local" placeholder="当地语言名称，如 Sultan Ahmet Camii" value="' + esc(f.local || '') + '">' +
+        '<input aria-label="' + esc(p) + ' 当地地址" data-pn="' + esc(p) + '" data-pf="address" placeholder="当地语言地址" value="' + esc(f.address || '') + '">' +
+        (needsLocal(d, p) ? '<small class="warn">出境地点缺少外文名称：导航只能用中文名搜索，也不会显示「给司机看」。请填写当地语言或英文名称</small>' : '') + '</div>';
+    }).join('') + '</details>';
+}
+function needsLocal(d, p) {
+  const f = (d.placeInfo || {})[p] || {};
+  return Roadbook.isAbroad(f.country || data.country) && !Roadbook.hasLocal(f);
+}
+
 function onEdit(e) {
   const t = e.target; if (!data) return;
+  if (t.dataset.pn) {
+    const i = +t.closest('[data-day]').dataset.day, d = data.days[i];
+    d.placeInfo = d.placeInfo || {};
+    const f = d.placeInfo[t.dataset.pn] || (d.placeInfo[t.dataset.pn] = { local: '', en: '', address: '', city: '', country: '' });
+    f[t.dataset.pf] = t.value.trim();
+    const row = t.closest('.prow'), w = row.querySelector('.warn');
+    if (needsLocal(d, t.dataset.pn)) { if (!w) row.insertAdjacentHTML('beforeend', '<small class="warn">出境地点缺少外文名称：导航只能用中文名搜索，也不会显示「给司机看」。请填写当地语言或英文名称</small>'); }
+    else if (w) w.remove();
+    clearTimeout(timer); timer = setTimeout(refresh, 250); return;
+  }
   if (t.dataset.k) data[t.dataset.k] = t.value;
   else if (t.dataset.ck) data.contacts[+t.dataset.c][t.dataset.ck] = t.value;
   else if (t.dataset.l) data[t.dataset.l] = t.value.split('\n').map(s => s.trim()).filter(Boolean);
   else if (t.dataset.dk) {
     const i = +t.closest('[data-day]').dataset.day, d = data.days[i];
-    if (t.dataset.dk === 'places') { d.places = t.value.split(/[，,、\s]+/).filter(Boolean); d.placesEdited = true; }
+    if (t.dataset.dk === 'places') { d.places = t.value.split(/[，,、\s]+/).filter(Boolean); d.placesEdited = true; $('d' + i + '-pinfo').innerHTML = placeRows(d); }
     else {
       d[t.dataset.dk] = t.value;
       if (t.dataset.dk === 'text') {
         d.placesEdited = false; Roadbook.buildDay(d);
         $('d' + i + '-places').value = d.places.join('，');
         $('d' + i + '-chips').innerHTML = d.chips.map(c => '<span>' + esc(c) + '</span>').join('');
+        $('d' + i + '-pinfo').innerHTML = placeRows(d);
       }
     }
   }

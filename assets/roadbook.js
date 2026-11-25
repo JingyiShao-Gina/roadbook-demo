@@ -178,6 +178,7 @@
     var counts = {};
     data.days.forEach(function (d) { Object.keys(d.placeInfo).forEach(function (n) { var c = d.placeInfo[n].country; if (c) counts[c] = (counts[c] || 0) + 1; }); });
     var main = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0] || '';
+    if (isAbroad(main)) data.country = main;
     if (isAbroad(main)) data.days.forEach(function (d) {
       d.places.forEach(function (n) {
         var f = d.placeInfo[n] || (d.placeInfo[n] = { local: '', en: '', address: '', city: '', country: '' });
@@ -246,6 +247,10 @@
     country = (country || '').trim();
     return !!country && !/^(中国|中华人民共和国|China)$/i.test(country);
   }
+  function hasLocal(f) {
+    f = f || {};
+    return !!(f.local || f.en);
+  }
   function uniqJoin(parts) {
     var out = [];
     parts.forEach(function (p) {
@@ -308,19 +313,24 @@
       var info = d.placeInfo || {};
       var mapBtns = function (p) {
         var f = info[p] || {};
-        var abroad = isAbroad(f.country);
-        var q = f.local ? uniqJoin([f.local, f.address]) : uniqJoin([f.en || p, f.address, f.city, f.country]);
+        var country = f.country || data.country || '';
+        var abroad = isAbroad(country);
         if (!abroad) {
           var c = f.city || city;
           var amap = 'https://uri.amap.com/search?keyword=' + encodeURIComponent(p) + (c ? '&city=' + encodeURIComponent(c) : '') + '&callnative=1&src=ai-roadbook';
-          return linkBtn(amap, '高德地图', true) + linkBtn('https://maps.apple.com/?q=' + encodeURIComponent(uniqJoin([p, f.address, c])), '苹果地图');
+          var aq = uniqJoin([p, f.address, c]);
+          return linkBtn('https://maps.apple.com/?daddr=' + encodeURIComponent(aq) + '&dirflg=d', '苹果地图导航', true) + linkBtn(amap, '高德地图');
         }
         abroadAny = true;
-        var id = 'drv-' + (drivers.length + 1);
-        drivers.push({ id: id, back: 'day' + (i + 1), cn: p, f: f });
-        return linkBtn('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q), 'Google 地图', true) +
-          linkBtn('https://maps.apple.com/?q=' + encodeURIComponent(q), '苹果地图') +
-          '<a class="btn" href="#' + id + '">给司机看</a>';
+        var dest = f.local ? uniqJoin([f.local, f.address]) : uniqJoin([f.en || p, f.address, f.city, country]);
+        var out = linkBtn('https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(dest) + '&travelmode=driving', 'Google 导航', true) +
+          linkBtn('https://maps.apple.com/?daddr=' + encodeURIComponent(dest) + '&dirflg=d', '苹果地图导航');
+        if (hasLocal(f)) {
+          var id = 'drv-' + (drivers.length + 1);
+          drivers.push({ id: id, back: 'day' + (i + 1), cn: p, f: { local: f.local, en: f.en, address: f.address, city: f.city, country: country } });
+          out += '<a class="btn" href="#' + id + '">给司机看</a>';
+        }
+        return out;
       };
       var card = function (p, phone) {
         var f = info[p] || {};
@@ -372,5 +382,5 @@
       '<footer class="wrap">' + esc(data.org || '') + ' · 本路书由 AI 路书工具生成。地名和地址由 AI 整理，出发前请以导游通知为准。</footer>' + bar + drivers.map(driverPage).join('') + '</body></html>';
   }
 
-  global.Roadbook = { parseItinerary: parseItinerary, buildDay: buildDay, detectPlaces: detectPlaces, renderRoadbook: renderRoadbook, fromAI: fromAI };
+  global.Roadbook = { parseItinerary: parseItinerary, buildDay: buildDay, detectPlaces: detectPlaces, renderRoadbook: renderRoadbook, fromAI: fromAI, isAbroad: isAbroad, hasLocal: hasLocal };
 })(window);
