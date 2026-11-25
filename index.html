@@ -282,7 +282,11 @@ $('download').addEventListener('click', () => {
 });
 $('openNew').addEventListener('click', () => {
   if (!html) { say('请先导入行程资料。', true); return; }
-  window.open(URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' })), '_blank');
+  const w = window.open('', '_blank');
+  if (!w) { say('浏览器拦截了新窗口，请允许本网站弹出窗口后再试。', true); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 });
 window.__roadbook = { get html() { return html; }, get data() { return data; } };
 checkAI();
