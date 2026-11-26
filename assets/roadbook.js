@@ -239,6 +239,13 @@
     '.btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:999px;font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid var(--chili);color:var(--chili);white-space:nowrap}.btn.solid{background:var(--chili);color:#fff}.btn svg{width:16px;height:16px;flex:none}' +
     '.tip{margin-top:14px;font-size:15px;background:var(--leaf);border-radius:12px;padding:10px 14px}.tip b{color:var(--chili);font-weight:600;margin-right:6px}' +
     '.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.box{border:1px solid var(--line);border-radius:14px;padding:14px 16px}.box h3{font-size:18px;margin-bottom:6px}.box ul{margin:0;padding-left:1.1em}.box li{margin:4px 0}.notes{margin:0;padding-left:1.2em}.notes li{margin:6px 0}' +
+    '.hero{margin:0;position:relative}.hero img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover}.cap{font-size:11px;line-height:1.4;color:var(--muted);margin:4px 0 0}.cap a{color:inherit}' +
+    '.hero .cap{position:absolute;right:8px;bottom:6px;margin:0;color:#fff;opacity:.85;text-shadow:0 0 3px #000;max-width:80%;text-align:right}' +
+    '.pimg{margin:-10px -12px 10px}.pimg img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px 12px 0 0}.pimg .cap{padding:0 12px}' +
+    '.dph{display:flex;gap:8px;overflow-x:auto;margin:2px -20px 14px;padding:0 20px;scroll-snap-type:x mandatory;scrollbar-width:none}.dph img{flex:none;width:80%;max-width:440px;aspect-ratio:4/3;object-fit:cover;border-radius:12px;scroll-snap-align:start}.dph img:only-child{width:100%;max-width:none;aspect-ratio:16/9}' +
+    '.team{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.mate{display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:12px}' +
+    '.mate img{width:72px;height:72px;border-radius:50%;object-fit:cover}.mate .r{font-size:13px;color:var(--chili)}.mate b{display:block;font-size:17px}.mate .btn{margin-top:6px}' +
+    '.call.pic{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center}.call img{width:36px;height:36px;border-radius:50%;object-fit:cover;grid-row:span 2;margin-right:10px;border:2px solid rgba(255,255,255,.6)}' +
     'footer{padding:28px 20px 36px;font-size:13px;color:var(--muted)}' +
     '.bar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}.bar .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px}' +
     '.call{display:flex;flex-direction:column;justify-content:center;min-height:52px;border-radius:14px;padding:6px 12px;text-decoration:none;background:var(--green);color:#fff}.call.alt{background:var(--leaf);color:var(--ink)}.call b{font-size:15px}.call small{font-size:13px;opacity:.85}' +
@@ -319,6 +326,13 @@
     return '<svg class="band" height="24" aria-hidden="true"><defs><pattern id="motif" width="24" height="24" patternUnits="userSpaceOnUse">' + tile + '</pattern></defs><rect width="100%" height="24" fill="url(#motif)"/></svg>';
   }
 
+  function credit(v) {
+    var c = v && v.credit;
+    if (!c || !c.license) return '';
+    return '<p class="cap">图：' + esc(c.artist || '佚名') + ' · ' + esc(c.license) + (c.page ? ' · <a href="' + esc(c.page) + '" target="_blank" rel="noopener">维基共享资源</a>' : '') + '</p>';
+  }
+  function okImg(v) { return v && typeof v.src === 'string' && /^(data:image\/(jpeg|png|webp);base64,|img\/|https:\/\/)/.test(v.src); }
+
   function renderRoadbook(data) {
     var city = (data.city || '').trim();
     var nav = function (kw) {
@@ -366,7 +380,8 @@
       var card = function (p, phone) {
         var f = info[p] || {};
         var sub = uniqJoin([f.local && f.local !== p ? f.local : '', f.address]);
-        return '<div class="place"><div class="ph"><span class="pn">' + esc(p) + '</span></div>' +
+        return '<div class="place">' + (okImg(f.img) ? '<figure class="pimg"><img src="' + esc(f.img.src) + '" alt="' + esc(p) + '" loading="lazy">' + credit(f.img) + '</figure>' : '') +
+          '<div class="ph"><span class="pn">' + esc(p) + '</span></div>' +
           (sub ? '<div class="addr" dir="auto">' + esc(sub) + '</div>' : '') +
           (desc[p] ? '<p class="pd">' + esc(desc[p]) + '</p>' : '') +
           '<div class="acts">' + mapBtns(p) + (phone ? telBtn(phone) : '') + '</div></div>';
@@ -385,7 +400,7 @@
         items += '<li><span class="time">地点</span><div>' + extra.map(function (p) { return card(p, ''); }).join('') + '</div></li>';
       }
       return '<section class="day" id="day' + (i + 1) + '"><div class="dhead"><span class="k">DAY</span><span class="no">' + (i < 9 ? '0' : '') + (i + 1) + '</span><span class="date">' + esc(dayDate(data.startDate, i)) + '</span></div>' +
-        '<h2>' + esc(d.title) + '</h2>' + (d.chips && d.chips.length ? '<div class="chips">' + d.chips.map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' : '') +
+        '<h2>' + esc(d.title) + '</h2>' + ((d.photos || []).filter(okImg).length ? '<div class="dph">' + d.photos.filter(okImg).map(function (x) { return '<img src="' + esc(x.src) + '" alt="' + esc(d.title) + '" loading="lazy">'; }).join('') + '</div>' : '') + (d.chips && d.chips.length ? '<div class="chips">' + d.chips.map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' : '') +
         '<ol class="sched">' + items + '</ol>' + (d.tip ? '<div class="tip"><b>' + (isAbroad(data.country) ? '当地贴士' : '贴士') + '</b>' + esc(d.tip) + '</div>' : '') + '</section>';
     }).join('');
 
@@ -398,19 +413,24 @@
     var fees = (data.include.length || data.exclude.length) ? '<section id="fees"><h2>费用说明</h2><div class="cols">' +
       (data.include.length ? '<div class="box"><h3>已包含</h3>' + list(data.include) + '</div>' : '') +
       (data.exclude.length ? '<div class="box"><h3>不包含</h3>' + list(data.exclude) + '</div>' : '') + '</div></section>' : '';
+    var mates = (data.contacts || []).filter(function (c) { return c && (c.name || c.tel) && c.photo && okImg(c.photo); });
+    var team = mates.length ? '<section><h2>你的领队与司机</h2><div class="team">' + (data.contacts || []).filter(function (c) { return c && (c.name || c.tel); }).map(function (c) {
+      return '<div class="mate">' + (okImg(c.photo) ? '<img src="' + esc(c.photo.src) + '" alt="' + esc(c.role + ' ' + c.name) + '" loading="lazy">' : '<span></span>') +
+        '<div><div class="r">' + esc(c.role) + '</div><b>' + esc(c.name) + '</b>' + (c.tel ? telBtn(c.tel) : '') + '</div></div>';
+    }).join('') + '</div></section>' : '';
     var notes = data.notes.length ? '<section><h2>出行提示</h2><ol class="notes">' + data.notes.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></section>' : '';
     var contacts = (data.contacts || []).filter(function (c) { return c && c.tel; });
     var bar = contacts.length ? '<nav class="bar" aria-label="联系方式"><div class="in">' + contacts.map(function (c, i) {
-      return '<a class="call' + (i ? ' alt' : '') + '" href="tel:' + esc(c.tel.replace(/[\s-]/g, '')) + '"><b>致电' + esc(c.role) + ' ' + esc(c.name) + '</b><small>' + esc(c.tel) + '</small></a>';
+      return '<a class="call' + (i ? ' alt' : '') + (c.photo && okImg(c.photo) ? ' pic' : '') + '" href="tel:' + esc(c.tel.replace(/[\s-]/g, '')) + '">' + (c.photo && okImg(c.photo) ? '<img src="' + esc(c.photo.src) + '" alt="">' : '') + '<b>致电' + esc(c.role) + ' ' + esc(c.name) + '</b><small>' + esc(c.tel) + '</small></a>';
     }).join('') + '</div></nav>' : '';
 
     return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' + esc(data.title || '行程路书') + '</title><style>' + CSS + themeCss + '</style></head><body>' +
-      '<header class="cover"><div class="wrap"><div class="in"><div class="org">' + esc(data.org || '') + ' · 出行手册</div>' + (th.label ? '<div class="label">' + esc(th.label) + '</div>' : '') + '<h1>' + esc(data.title || '行程路书') + '</h1><div class="meta">' + meta + '</div></div>' +
+      '<header class="cover"><div class="wrap">' + (okImg(data.cover) ? '<figure class="hero"><img src="' + esc(data.cover.src) + '" alt="' + esc(data.title || '') + '">' + credit(data.cover) + '</figure>' : '') + '<div class="in"><div class="org">' + esc(data.org || '') + ' · 出行手册</div>' + (th.label ? '<div class="label">' + esc(th.label) + '</div>' : '') + '<h1>' + esc(data.title || '行程路书') + '</h1><div class="meta">' + meta + '</div></div>' +
       '<div class="stops">' + stops.slice(0, 8).map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div></div></header>' + motifBand(th) +
       (days.length > 1 ? '<nav class="dnav" aria-label="按天跳转"><div class="wrap">' + days.map(function (d, i) { return '<a href="#day' + (i + 1) + '">D' + (i + 1) + '</a>'; }).join('') + '<a href="#fees">费用</a></div></nav>' : '') +
       '<main class="wrap">' + (days.length ? '<section><h2>行程一览</h2><div class="overview">' + overview + '</div></section>' : '') +
       (abroadAny ? '<section><div class="notice"><h3>出境导航小贴士</h3><ul><li>出境后建议在当地购买电话卡或开通国际流量。用国内手机卡漫游时，Google 地图可能打不开，可以改用苹果地图。</li><li>打车或问路时，点地点旁边的「给司机看」，把屏幕给司机看，上面是当地语言的地名和地址。</li></ul></div></section>' : '') +
-      dayHtml + fees + notes + '</main>' +
+      team + dayHtml + fees + notes + '</main>' +
       '<footer class="wrap">' + esc(data.org || '') + ' · 本路书由 AI 路书工具生成。地名和地址由 AI 整理，出发前请以导游通知为准。</footer>' + bar + drivers.map(driverPage).join('') + '</body></html>';
   }
 

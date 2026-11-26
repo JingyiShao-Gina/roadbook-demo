@@ -77,6 +77,17 @@ textarea{resize:vertical;line-height:1.5}
 .pub small{display:block;margin-top:8px;font-size:13px;color:var(--muted)}
 a.dl{display:inline-flex;align-items:center;text-decoration:none}
 @media(max-width:600px){.pubrow{grid-template-columns:1fr 1fr}.pubrow input{grid-column:1/-1}}
+.imgline{grid-column:1/-1;display:grid;grid-template-columns:72px minmax(0,1fr);gap:4px 12px;align-items:center;margin-top:6px;padding:8px;border:1px dashed var(--line);border-radius:12px}
+.imgline .th{grid-row:span 2;width:72px;height:48px;border-radius:8px;background:var(--leaf);display:grid;place-items:center;font-size:12px;color:var(--muted);overflow:hidden}
+.imgline .th img{width:100%;height:100%;object-fit:cover;display:block}
+.imgline b{font-size:14px}.imgline small{display:block;font-size:12px;color:var(--muted)}
+.imgline small.chk{color:var(--chili)}
+.imgline .ib{display:flex;flex-wrap:wrap;gap:6px}
+.imgline .ib button{min-height:30px;font-size:13px;padding:0 10px}
+.poolpick{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding:6px 0}
+.poolpick button{padding:0;width:88px;height:58px;border-radius:8px;overflow:hidden}
+.poolpick img{width:100%;height:100%;object-fit:cover;display:block}
+#imgStatus:empty{display:none}
 @media(max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}.preview{position:static}.phone{height:640px;max-width:420px;margin:0 auto}}
 </style>
 </head>
@@ -98,6 +109,8 @@ a.dl{display:inline-flex;align-items:center;text-decoration:none}
 
     <div class="step" id="edit">
       <h2><span>2</span>核对与修改</h2>
+      <div class="status" id="imgStatus" role="status"></div>
+      <input type="file" id="imgFile" accept="image/*" hidden>
       <div id="form"><p class="empty">导入资料后，这里会出现识别出的标题、日期、每日行程和地点，可以直接修改。</p></div>
     </div>
 
@@ -136,11 +149,12 @@ async function checkAI() {
   const box = $('aiBox');
   try {
     const r = await fetch(AI.url + '/health', { cache: 'no-store' });
-    AI.ok = r.ok && (await r.json()).ok === true;
-  } catch (e) { AI.ok = false; }
+    const j = r.ok ? await r.json() : {};
+    AI.ok = j.ok === true; AI.image = j.image === true;
+  } catch (e) { AI.ok = false; AI.image = false; }
   box.className = 'ai ' + (AI.ok ? 'on' : 'off');
   $('aiTitle').textContent = AI.ok ? 'AI 已连接（智谱 GLM-4-Flash，免费）' : 'AI 未连接，当前使用规则识别';
-  $('aiHint').textContent = AI.ok ? '上传的资料会由 AI 整理，并自动补充景点介绍和每日提示。' : '在电脑上双击「文档 › AI路书MVP › AI助手 › 启动AI助手.bat」，然后点「重新检查」。';
+  $('aiHint').textContent = AI.ok ? (AI.image ? '上传的资料会由 AI 整理，补充景点介绍和每日提示，并自动从网上配图。' : 'AI 助手是旧版本，不能网上找图：请关掉 AI 助手窗口，重新双击启动后点「重新检查」。') : '在电脑上双击「文档 › AI路书MVP › AI助手 › 启动AI助手.bat」，然后点「重新检查」。没有 AI 助手时，仍可以自己上传图片。';
   $('aiRedo').hidden = !(AI.ok && data);
   return AI.ok;
 }
@@ -165,36 +179,125 @@ async function aiParse(text) {
   throw new Error(lastErr || 'AI 整理失败');
 }
 
-async function pdfText(buf) {
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  let out = '';
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const tc = await (await pdf.getPage(p)).getTextContent();
-    let lastY = null;
-    for (const it of tc.items) {
-      const y = it.transform ? Math.round(it.transform[5]) : null;
-      if (lastY !== null && y !== null && Math.abs(y - lastY) > 2 && !out.endsWith('\n')) out += '\n';
-      out += it.str;
-      if (it.hasEOL && !out.endsWith('\n')) out += '\n';
-      lastY = y;
-    }
-    out += '\n';
+/* ---------- 图片：压缩、从 PDF / Word 里拾取、按天对应 ---------- */
+const media = { pool: [] };   // 从上传文件里拾取的图片 {src, w, h, day}
+const loadImg = src => new Promise((ok, bad) => { const im = new Image(); im.onload = () => ok(im); im.onerror = bad; im.src = src; });
+function toJpeg(img, maxW, q) {
+  const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height, s = Math.min(1, maxW / w0);
+  const c = document.createElement('canvas'); c.width = Math.round(w0 * s); c.height = Math.round(h0 * s);
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', q || 0.72);
+}
+const CN_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+function cnNum(s) {
+  if (/^\d+$/.test(s)) return +s;
+  const m = s.match(/^([一二三四五六七八九])?(十)?([一二三四五六七八九])?$/);
+  if (!m) return 0;
+  return m[2] ? (m[1] ? CN_NUM[m[1]] : 1) * 10 + (m[3] ? CN_NUM[m[3]] : 0) : (CN_NUM[m[1] || m[3]] || 0);
+}
+function dayMarks(text) {
+  const re = /(?:^|\n)\s*(?:第\s*([一二三四五六七八九十\d]{1,3})\s*天|D\s*0?(\d{1,2})(?![\d:：])|Day\s*0?(\d{1,2}))/gi, out = [];
+  let m; while ((m = re.exec(text))) { const n = cnNum(m[1] || m[2] || m[3]); if (n) out.push(n); }
+  return out;
+}
+function rawToCanvas(img) {
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const ctx = c.getContext('2d');
+  if (img.bitmap) ctx.drawImage(img.bitmap, 0, 0);
+  else if (img.data && (img.kind === 2 || img.kind === 3)) {
+    const id = ctx.createImageData(img.width, img.height), d = img.data, o = id.data;
+    if (img.kind === 3) o.set(d.subarray(0, o.length));
+    else for (let s = 0, t = 0; t < o.length; s += 3, t += 4) { o[t] = d[s]; o[t + 1] = d[s + 1]; o[t + 2] = d[s + 2]; o[t + 3] = 255; }
+    ctx.putImageData(id, 0, 0);
+  } else return null;
+  return c;
+}
+// 判断是不是“照片”：太小的是图标、logo；竖长的通常是整页海报或背景；特别扁的是装饰条。
+// 宽高比超过 2.3 的横图，旅行社常用来并排放两张照片，拆成左右两张。
+function photoItems(src, w, h) {
+  if (w < 500 || h < 300) return [];
+  const r = w / h;
+  if (r < 0.8 || r > 4) return [];
+  const parts = r >= 2.3 ? [[0, w / 2], [w / 2, w / 2]] : [[0, w]];
+  return parts.map(([sx, sw]) => {
+    const c = document.createElement('canvas'), s = Math.min(1, 1200 / sw);
+    c.width = Math.round(sw * s); c.height = Math.round(h * s);
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(src, sx, 0, sw, h, 0, 0, c.width, c.height);
+    return { src: c.toDataURL('image/jpeg', 0.72), w: Math.round(sw), h };
+  });
+}
+// 同一张图在文件里出现好几次，一般是图标或页眉装饰，去掉
+function dropRepeats(pool) {
+  const n = {}; pool.forEach(x => { n[x.src] = (n[x.src] || 0) + 1; });
+  return pool.filter(x => n[x.src] === 1);
+}
+async function pdfPageImages(page) {
+  const ops = await page.getOperatorList(), out = [], seen = new Set(), OPS = pdfjsLib.OPS;
+  for (let i = 0; i < ops.fnArray.length; i++) {
+    const fn = ops.fnArray[i];
+    if (fn !== OPS.paintImageXObject && fn !== OPS.paintJpegXObject) continue;
+    const name = ops.argsArray[i][0]; if (seen.has(name)) continue; seen.add(name);
+    const objs = String(name).startsWith('g_') ? page.commonObjs : page.objs;
+    const img = await new Promise(res => { setTimeout(() => res(null), 4000); try { objs.get(name, res); } catch (e) { res(null); } });
+    if (!img || img.width < 500 || img.height < 300) continue;
+    const c = rawToCanvas(img); if (c) out.push(...photoItems(c, img.width, img.height));
   }
   return out;
+}
+async function pdfRead(buf) {
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let out = '', cur = null; const pool = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p), tc = await page.getTextContent();
+    let pt = '', lastY = null;
+    for (const it of tc.items) {
+      const y = it.transform ? Math.round(it.transform[5]) : null;
+      if (lastY !== null && y !== null && Math.abs(y - lastY) > 2 && !pt.endsWith('\n')) pt += '\n';
+      pt += it.str;
+      if (it.hasEOL && !pt.endsWith('\n')) pt += '\n';
+      lastY = y;
+    }
+    out += pt + '\n';
+    // 这一页的图片属于哪一天：本页出现的第一个“第 N 天”，没有就沿用上一页；一页里有很多天（行程总览页）就当作封面候选
+    const marks = dayMarks('\n' + pt), overview = marks.length >= 3;
+    const day = overview ? null : (marks.length ? marks[0] : cur);
+    if (!overview && marks.length) cur = marks[marks.length - 1];
+    if (pool.length < 60) { try { (await pdfPageImages(page)).forEach(im => { im.day = day; pool.push(im); }); } catch (e) {} }
+  }
+  return { text: out, pool: dropRepeats(pool).slice(0, 40) };
+}
+async function docxRead(buf) {
+  const text = (await mammoth.extractRawText({ arrayBuffer: buf })).value, pool = [];
+  try {
+    const h = (await mammoth.convertToHtml({ arrayBuffer: buf })).value;
+    let cur = null;
+    for (const part of h.split(/(<img[^>]*>)/)) {
+      if (part.startsWith('<img')) {
+        const m = part.match(/src="([^"]+)"/);
+        if (!m || pool.length >= 60) continue;
+        try { const im = await loadImg(m[1]); photoItems(im, im.naturalWidth, im.naturalHeight).forEach(x => { x.day = cur; pool.push(x); }); } catch (e) {}
+      } else {
+        const mk = dayMarks('\n' + part.replace(/<\/(p|h\d|li|tr)>|<br\s*\/?>/g, '\n').replace(/<[^>]+>/g, ''));
+        if (mk.length && mk.length < 3) cur = mk[mk.length - 1];
+      }
+    }
+  } catch (e) {}
+  return { text, pool: dropRepeats(pool).slice(0, 40) };
 }
 
 async function readFile(name, buf) {
   const ext = (name.split('.').pop() || '').toLowerCase();
-  if (ext === 'docx') return (await mammoth.extractRawText({ arrayBuffer: buf })).value;
-  if (ext === 'pdf') return pdfText(buf);
-  if (ext === 'txt') return new TextDecoder('utf-8').decode(buf);
+  if (ext === 'docx') return docxRead(buf);
+  if (ext === 'pdf') return pdfRead(buf);
+  if (ext === 'txt') return { text: new TextDecoder('utf-8').decode(buf), pool: [] };
   throw new Error('暂不支持 .' + ext + ' 文件，请上传 .docx、.pdf 或 .txt（老版 .doc 请先另存为 .docx）');
 }
 
 async function load(name, buf, useAI) {
   say('正在读取「' + name + '」…', false, true);
   try {
-    const text = await readFile(name, buf);
+    const got = await readFile(name, buf), text = got.text;
+    media.pool = got.pool;
     if (!text.trim()) throw new Error('没有读到文字。如果是扫描件或图片 PDF，目前还不支持，请换成可复制文字的文件');
     await useText(text, '已读取「' + name + '」', useAI);
   } catch (e) { say(e.message || '读取失败', true); }
@@ -209,26 +312,168 @@ async function useText(text, label, useAI) {
     try {
       data = await aiParse(text);
       say(label + '：AI 整理出 ' + data.days.length + ' 天行程、' + data.days.reduce((n, d) => n + d.places.length, 0) + ' 个地点，并补充了景点介绍。请在第 2 步核对。');
-      buildForm(); refresh(); busy = false; checkAI(); return;
+      busy = false; afterData(); return;
     } catch (e) {
       busy = false;
       data = Roadbook.parseItinerary(text);
       say('AI 暂时不可用（' + e.message + '），已改用规则识别。可以稍后点「用 AI 重新整理」。', true);
-      buildForm(); refresh(); checkAI(); return;
+      afterData(); return;
     }
   }
   data = Roadbook.parseItinerary(text);
   if (!data.days.length) { say(label + '，但没有找到“第一天 / D1”这样的每日行程标记，请检查格式或直接粘贴文字修改。', true); }
   else say(label + '：规则识别出 ' + data.days.length + ' 天行程、' + data.days.reduce((n, d) => n + d.places.length, 0) + ' 个地点。请在第 2 步核对。' + (AI.ok ? '想要更完整的内容，可以点「用 AI 重新整理」。' : ''));
-  buildForm(); refresh(); checkAI();
+  afterData();
 }
+
+/* ---------- 图片位置：封面、景点、联系人照片 ---------- */
+const NO_IMG = /机场|酒店|客栈|宾馆|民宿|饭店|餐厅|火车站|高铁站|车站|度假村|码头|航站楼/;
+const wantsImg = p => !NO_IMG.test(p);
+function pinfo(d, p) { d.placeInfo = d.placeInfo || {}; return d.placeInfo[p] || (d.placeInfo[p] = { local: '', en: '', address: '', city: '', country: '' }); }
+function slot(key) {
+  if (key === 'cover') return { get: () => data.cover, set: v => { data.cover = v; data.noCover = !v; }, w: 1400, label: '封面图' };
+  const k = key.split(':');
+  if (k[0] === 'c') { const c = data.contacts[+k[1]]; return { get: () => c.photo, set: v => { c.photo = v; }, w: 480, label: (c.role || '联系人') + '照片（选填）', noWeb: true }; }
+  const d = data.days[+k[1]], name = k.slice(2).join(':'), f = pinfo(d, name);
+  return { get: () => f.img, set: v => { f.img = v; f.noImg = !v; }, w: 1000, label: name + ' 的图片' };
+}
+function srcNote(v) {
+  if (!v) return '<small>还没有图片</small>';
+  if (v.from === 'upload') return '<small>自己上传的图片</small>';
+  if (v.from === 'pdf') return '<small class="chk">从上传的文件里拾取的图片，请核对是不是这个地方</small>';
+  const c = v.credit || {};
+  return '<small>网上找的：' + esc(c.title || '') + ' · ' + esc(c.artist || '') + ' · ' + esc(c.license || '') + '（维基共享资源，可免费使用）</small>';
+}
+function imgLine(key) {
+  const s = slot(key), v = s.get();
+  return '<div class="imgline" data-slot="' + esc(key) + '"><div class="th">' + (v ? '<img src="' + v.src + '" alt="">' : '无图') + '</div>' +
+    '<div><b>' + esc(s.label) + '</b>' + srcNote(v) + '</div>' +
+    '<div class="ib"><button type="button" data-act="up">' + (v ? '换成自己的图' : '上传图片') + '</button>' +
+    (media.pool.length ? '<button type="button" data-act="pool">从文件里的图选</button>' : '') +
+    (!s.noWeb ? '<button type="button" data-act="web">网上找一张</button>' : '') +
+    (v ? '<button type="button" data-act="rm">不要图片</button>' : '') + '</div></div>';
+}
+function redrawLine(key) {
+  const el = document.querySelector('.imgline[data-slot="' + CSS.escape(key) + '"]');
+  if (el) { const n = el.nextElementSibling; if (n && n.classList.contains('poolpick')) n.remove(); el.outerHTML = imgLine(key); }
+  clearTimeout(timer); timer = setTimeout(refresh, 250);
+}
+const imgSay = msg => { $('imgStatus').textContent = msg; };
+
+function assignPool() {
+  if (!media.pool.length) return 0;
+  const used = new Set(); let n = 0;
+  if (!data.cover && !data.noCover) {
+    const c = media.pool.filter(x => !x.day).sort((a, b) => b.w * b.h - a.w * a.h)[0];
+    if (c) { data.cover = { src: c.src, from: 'pdf' }; used.add(c); n++; }
+  }
+  // 文件里的图按页码只能判断属于哪一天，判断不了是哪个景点，所以放进“当天照片”，不硬配给景点
+  data.days.forEach((d, i) => {
+    if (d.photos) return;
+    d.photos = media.pool.filter(x => x.day === i + 1 && !used.has(x)).slice(0, 4).map(x => { used.add(x); n++; return { src: x.src, from: 'pdf' }; });
+  });
+  return n;
+}
+function coverQuery() {
+  if (data.city) return data.city;
+  const cnt = {};
+  data.days.forEach(d => Object.values(d.placeInfo || {}).forEach(f => { if (f.city) cnt[f.city] = (cnt[f.city] || 0) + 1; }));
+  const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+  if (top) return top;
+  const m = (data.title || '').match(/^([一-龥]{2,8}?)(?=\d|[一二三四五六七八九十]+[日天])/);
+  return m ? m[1] : (data.country || '');
+}
+function placeTries(d, p) {
+  const f = pinfo(d, p), abroad = Roadbook.isAbroad(f.country || data.country);
+  // “人民路”“中心广场”这类常见短地名，加上城市名再搜
+  const city = f.city || data.city || '', generic = p.length <= 3 || /路$|街$|广场$/.test(p);
+  const zh = generic && city && p.indexOf(city) < 0 ? city + p : p;
+  const t = abroad ? [['en', f.en], ['zh', zh, p], ['en', f.local]] : [['zh', zh, p], ['en', f.en], ['zh', f.local]];
+  const seen = new Set();
+  return t.filter(x => x[1] && !seen.has(x[0] + '|' + x[1]) && seen.add(x[0] + '|' + x[1])).map(x => ({ lang: x[0], q: x[1], must: x[2] || x[1] }));
+}
+async function findWeb(tries, w) {
+  if (!tries.length) return null;
+  const r = await fetch(AI.url + '/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tries, width: w > 1000 ? 1280 : 960 }) });
+  const j = await r.json();
+  if (!j.ok) return null;
+  const im = await loadImg('data:' + j.mime + ';base64,' + j.b64);
+  return { src: toJpeg(im, w), from: 'web', credit: { artist: j.artist, license: j.license, page: j.page, title: j.title } };
+}
+function webJob(key) {
+  if (key === 'cover') { const q = coverQuery(); return q ? [{ lang: 'zh', q }, { lang: 'en', q }] : []; }
+  const k = key.split(':'); return placeTries(data.days[+k[1]], k.slice(2).join(':'));
+}
+let webRun = 0;
+async function webImages() {
+  if (!AI.image) return;
+  const run = ++webRun, cur = data, keys = [];
+  if (!data.cover && !data.noCover) keys.push('cover');
+  data.days.forEach((d, i) => d.places.forEach(p => { const f = pinfo(d, p); if (wantsImg(p) && !f.img && !f.noImg) keys.push('p:' + i + ':' + p); }));
+  const todo = keys.slice(0, 30); let got = 0;
+  for (let i = 0; i < todo.length; i++) {
+    if (run !== webRun || data !== cur) return;
+    imgSay('正在从网上给没有图片的地方配图（' + (i + 1) + ' / ' + todo.length + '）…业务员自己上传的图片会优先使用。');
+    const s = slot(todo[i]); if (s.get()) continue;
+    try { const v = await findWeb(webJob(todo[i]), s.w); if (v && data === cur && !s.get()) { s.set(v); got++; redrawLine(todo[i]); } } catch (e) {}
+    await new Promise(z => setTimeout(z, 600));   // 别太快，维基有访问频率限制
+  }
+  if (run !== webRun) return;
+  // 封面没找到合适的城市图，就用第一个景点的图
+  if (!data.cover && !data.noCover) {
+    for (const d of data.days) { const f = d.places.map(p => (d.placeInfo || {})[p]).find(f => f && f.img); if (f) { data.cover = Object.assign({}, f.img); redrawLine('cover'); break; } }
+  }
+  got = (data.cover && data.cover.from === 'web' ? 1 : 0) + data.days.reduce((n, d) => n + Object.values(d.placeInfo || {}).filter(f => f.img && f.img.from === 'web').length, 0);
+  imgSay(got ? '已从网上配好 ' + got + ' 张图（维基共享资源的自由许可图片，路书里会注明作者）。不合适的可以点「换成自己的图」。' : '');
+}
+function afterData() {
+  const n = assignPool();
+  buildForm(); refresh(); checkAI().then(() => webImages());
+  imgSay(n ? '从上传的文件里拾取了 ' + n + ' 张照片，放在了封面和对应那天的「当天照片」里，请核对。想把某张用作景点图，可以在景点下面点「从文件里的图选」。' : '');
+}
+function dayPhotos(d, i) {
+  if (!d.photos || !d.photos.length) return '';
+  return '<label class="f" style="margin-top:8px">当天照片（从上传的文件里拾取，放在当天标题下面；点照片可以去掉）</label><div class="poolpick">' +
+    d.photos.map((x, k) => '<button type="button" data-act="dphrm" data-day="' + i + '" data-k="' + k + '" aria-label="去掉这张照片"><img src="' + x.src + '" alt=""></button>').join('') + '</div>';
+}
+let pickKey = '';
+async function onImgClick(e) {
+  const b = e.target.closest('button'); if (!b || !data) return;
+  if (b.dataset.act === 'dphrm') { const i = +b.dataset.day, d = data.days[i]; d.photos.splice(+b.dataset.k, 1); $('d' + i + '-ph').innerHTML = dayPhotos(d, i); clearTimeout(timer); timer = setTimeout(refresh, 250); return; }
+  const line = b.closest('.imgline'), pick = b.closest('.poolpick');
+  if (pick) { const key = pick.dataset.for, it = media.pool[+b.dataset.i]; if (it) { slot(key).set({ src: it.src, from: 'pdf' }); redrawLine(key); } return; }
+  if (!line) return;
+  const key = line.dataset.slot, s = slot(key), act = b.dataset.act;
+  if (act === 'up') { pickKey = key; $('imgFile').click(); }
+  else if (act === 'rm') { s.set(null); redrawLine(key); }
+  else if (act === 'pool') {
+    const n = line.nextElementSibling; if (n && n.classList.contains('poolpick')) { n.remove(); return; }
+    line.insertAdjacentHTML('afterend', '<div class="poolpick" data-for="' + esc(key) + '">' + media.pool.map((x, i) => '<button type="button" data-i="' + i + '" aria-label="选第 ' + (i + 1) + ' 张"><img src="' + x.src + '" alt=""></button>').join('') + '</div>');
+  } else if (act === 'web') {
+    if (!AI.image && !(await checkAI() && AI.image)) { imgSay('网上找图需要启动新版 AI 助手。也可以点「上传图片」用自己的图。'); return; }
+    b.disabled = true; b.textContent = '正在找…';
+    const old = s.get(), tries = webJob(key);
+    try {
+      const v = await findWeb(old && old.from === 'web' ? tries.slice(1).concat(tries.slice(0, 1)) : tries, s.w);
+      if (v) { s.set(v); redrawLine(key); } else { b.textContent = '没找到合适的'; b.disabled = false; }
+    } catch (err) { b.textContent = '找图失败'; b.disabled = false; }
+  }
+}
+$('imgFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file || !pickKey || !data) return;
+  try {
+    const url = URL.createObjectURL(file), im = await loadImg(url); URL.revokeObjectURL(url);
+    const s = slot(pickKey); s.set({ src: toJpeg(im, s.w, 0.78), from: 'upload' }); redrawLine(pickKey);
+  } catch (err) { imgSay('这张图片打不开，请换一张 JPG 或 PNG。'); }
+});
 
 function buildForm() {
   if (!data) return;
   while (data.contacts.length < 2) data.contacts.push({ role: data.contacts.length ? '司机' : '导游', name: '', tel: '' });
   const f = $('form');
   f.innerHTML =
-    '<div class="fields">' +
+    '<div class="fields">' + imgLine('cover') +
     '<div style="grid-column:1/-1"><label class="f" for="f-title">路书标题</label><input id="f-title" data-k="title" value="' + esc(data.title) + '"></div>' +
     '<div><label class="f" for="f-org">旅行社名称</label><input id="f-org" data-k="org" value="' + esc(data.org) + '"></div>' +
     '<div><label class="f" for="f-start">出发日期</label><input id="f-start" type="date" data-k="startDate" value="' + esc(data.startDate) + '"></div>' +
@@ -236,12 +481,13 @@ function buildForm() {
     '<div><label class="f" for="f-city">导航城市（多城市可留空）</label><input id="f-city" data-k="city" value="' + esc(data.city) + '"></div>' +
     '<div><label class="f" for="f-country">目的地国家（出境线路填写）</label><input id="f-country" data-k="country" placeholder="例如 土耳其" value="' + esc(data.country || '') + '"></div></div>' +
     '<div class="daybox"><label class="f">联系人（会出现在路书底部，客户可一键拨打）</label>' +
-    data.contacts.map((c, i) => '<div class="contact"><input aria-label="角色" data-c="' + i + '" data-ck="role" value="' + esc(c.role) + '"><input aria-label="姓名" data-c="' + i + '" data-ck="name" placeholder="姓名" value="' + esc(c.name) + '"><input aria-label="电话" data-c="' + i + '" data-ck="tel" placeholder="电话" inputmode="tel" value="' + esc(c.tel) + '"></div>').join('') + '</div>' +
+    data.contacts.map((c, i) => '<div class="contact"><input aria-label="角色" data-c="' + i + '" data-ck="role" value="' + esc(c.role) + '"><input aria-label="姓名" data-c="' + i + '" data-ck="name" placeholder="姓名" value="' + esc(c.name) + '"><input aria-label="电话" data-c="' + i + '" data-ck="tel" placeholder="电话" inputmode="tel" value="' + esc(c.tel) + '"></div>' + imgLine('c:' + i)).join('') + '</div>' +
     data.days.map((d, i) =>
       '<div class="daybox" data-day="' + i + '"><div class="dt"><b>D' + (i + 1) + '</b><input aria-label="第' + (i + 1) + '天标题" data-dk="title" value="' + esc(d.title) + '"></div>' +
       '<label class="f" for="d' + i + '-text">行程（一行一项，行首可写时间，如 14:00）</label><textarea id="d' + i + '-text" data-dk="text">' + esc(d.text) + '</textarea>' +
       '<label class="f" for="d' + i + '-places" style="margin-top:8px">可导航的地点（用逗号分隔，可增删）</label><input id="d' + i + '-places" data-dk="places" value="' + esc(d.places.join('，')) + '">' +
       '<div class="found" id="d' + i + '-chips">' + d.chips.map(c => '<span>' + esc(c) + '</span>').join('') + '</div>' +
+      '<div id="d' + i + '-ph">' + dayPhotos(d, i) + '</div>' +
       '<div class="pinfo" id="d' + i + '-pinfo">' + placeRows(d) + '</div>' +
       '<label class="f" for="d' + i + '-tip" style="margin-top:8px">当日提示（选填）</label><input id="d' + i + '-tip" data-dk="tip" value="' + esc(d.tip) + '"></div>').join('') +
     '<div class="daybox fields">' +
@@ -253,14 +499,16 @@ function buildForm() {
 function placeRows(d) {
   d.placeInfo = d.placeInfo || {};
   if (!d.places.length) return '';
-  return '<details' + (d.places.some(p => needsLocal(d, p)) ? ' open' : '') + '><summary>地点的当地名称和地址（导航和「给司机看」会用到）</summary>' +
+  const di = data.days.indexOf(d);
+  return '<details' + (d.places.some(p => needsLocal(d, p) || wantsImg(p)) ? ' open' : '') + '><summary>地点的图片、当地名称和地址（导航和「给司机看」会用到）</summary>' +
     d.places.map(p => {
       const f = d.placeInfo[p] || {};
       return '<div class="prow"><b>' + esc(p) + '</b>' +
         '<input aria-label="' + esc(p) + ' 当地语言名称" data-pn="' + esc(p) + '" data-pf="local" placeholder="当地语言名称，如 Sultan Ahmet Camii" value="' + esc(f.local || '') + '">' +
         '<input aria-label="' + esc(p) + ' 当地地址" data-pn="' + esc(p) + '" data-pf="address" placeholder="当地语言地址" value="' + esc(f.address || '') + '">' +
         (needsLocal(d, p) ? '<small class="warn">出境地点缺少外文名称：导航只能用中文名搜索，也不会显示「给司机看」。请填写当地语言或英文名称</small>' : '') +
-        (f.translated && f.local ? '<small class="warn">这个名称是 AI 翻译的，请用酒店确认单或出团通知上的外文名核对、替换</small>' : '') + '</div>';
+        (f.translated && f.local ? '<small class="warn">这个名称是 AI 翻译的，请用酒店确认单或出团通知上的外文名核对、替换</small>' : '') +
+        (wantsImg(p) ? imgLine('p:' + di + ':' + p) : '') + '</div>';
     }).join('') + '</details>';
 }
 function needsLocal(d, p) {
@@ -307,6 +555,7 @@ function refresh() {
 }
 
 $('form').addEventListener('input', onEdit);
+$('form').addEventListener('click', onImgClick);
 $('file').addEventListener('change', async e => { const f = e.target.files[0]; if (f) load(f.name, await f.arrayBuffer()); e.target.value = ''; });
 const drop = $('drop');
 ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
@@ -320,7 +569,7 @@ $('aiRecheck').addEventListener('click', checkAI);
 $('aiRedo').addEventListener('click', () => { const t = $('paste').value; if (t.trim()) useText(t, '已重新整理', true); });
 $('sWord').addEventListener('click', () => sample('samples/dali-lijiang-5d.docx', '大理丽江5日行程.docx'));
 $('sPdf').addEventListener('click', () => sample('samples/xian-3d.pdf', '西安3日行程.pdf'));
-$('parseBtn').addEventListener('click', () => { const t = $('paste').value; if (t.trim()) useText(t, '已解析粘贴的文字'); });
+$('parseBtn').addEventListener('click', () => { const t = $('paste').value; media.pool = []; if (t.trim()) useText(t, '已解析粘贴的文字'); });
 $('download').addEventListener('click', () => {
   if (!html) { say('请先导入行程资料。', true); return; }
   const a = document.createElement('a');
@@ -370,7 +619,7 @@ $('pubCopy').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText($('pubUrl').value); $('pubCopy').textContent = '已复制'; setTimeout(() => $('pubCopy').textContent = '复制网址', 1500); }
   catch (e) { $('pubUrl').select(); say('请按 Ctrl+C 复制网址。'); }
 });
-window.__roadbook = { get html() { return html; }, get data() { return data; } };
+window.__roadbook = { get html() { return html; }, get data() { return data; }, use(d) { media.pool = []; data = d; afterData(); }, file(n, b, ai) { return load(n, b, ai); }, get pool() { return media.pool; } };
 checkAI();
 sample('samples/dali-lijiang-5d.docx', '大理丽江5日行程.docx', false);
 }
