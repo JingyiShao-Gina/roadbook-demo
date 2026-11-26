@@ -220,13 +220,13 @@
     '*{box-sizing:border-box;min-width:0}html{scroll-behavior:smooth}' +
     'body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;overflow-x:clip;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}' +
     '.wrap{max-width:640px;margin:0 auto}h1,h2,h3{font-family:"Songti SC","STSong","Noto Serif CJK SC","SimSun",serif;letter-spacing:-.01em;margin:0}a{color:inherit}' +
-    '.cover{background:var(--green);color:#fff}.cover .in{padding:28px 20px 0}.org{font-size:14px;opacity:.85}' +
-    '.cover h1{font-size:clamp(32px,8.5vw,46px);line-height:1.1;margin-top:14px;text-wrap:balance}.meta{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;font-size:15px}.meta b{font-weight:600}' +
-    '.hills{display:block;width:100%;height:auto;margin-top:14px}.stops{display:flex;flex-wrap:wrap;gap:6px;padding:0 20px 22px;margin-top:-4px}.stops span{font-size:13px;background:rgba(255,255,255,.14);border-radius:999px;padding:4px 10px;white-space:nowrap}' +
-    'section{padding:28px 20px 8px}h2{font-size:26px;line-height:1.15;margin-bottom:14px}.overview{display:grid;gap:10px}' +
+    '.cover{background:var(--green);color:#fff}.cover .in{padding:30px 20px 0}.org{font-size:14px;opacity:.85}.label{font-size:13px;letter-spacing:.2em;opacity:.8;margin-top:18px}' +
+    '.cover h1{font-size:clamp(32px,8.5vw,46px);line-height:1.15;margin-top:6px;text-wrap:balance;font-weight:600}.meta{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;font-size:15px}.meta b{font-weight:600}' +
+    '.band{display:block;width:100%;height:24px;background:var(--leaf)}.stops{display:flex;flex-wrap:wrap;gap:6px;padding:18px 20px 24px}.stops span{font-size:13px;background:rgba(255,255,255,.14);border-radius:999px;padding:4px 10px;white-space:nowrap}' +
+    '.dnav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);overflow-x:auto;white-space:nowrap;padding:8px 16px;scrollbar-width:none}.dnav a{display:inline-block;padding:4px 12px;margin-right:6px;border-radius:999px;background:var(--leaf);font-size:14px;text-decoration:none}section{padding:28px 20px 8px;scroll-margin-top:52px}h2{font-size:26px;line-height:1.15;margin-bottom:14px}.overview{display:grid;gap:10px}' +
     '.ov{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:14px;text-decoration:none;background:var(--card)}' +
-    '.ov .d{font-family:"Songti SC","STSong",serif;font-size:24px;color:var(--green);font-weight:700}.ov .t{font-weight:600}.ov .s{font-size:14px;color:var(--muted)}.ov .go{font-size:14px;color:var(--muted)}' +
-    '.day{border-top:8px solid var(--leaf);padding-top:28px}.dhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.dhead .no{font-family:"Songti SC","STSong",serif;font-size:40px;line-height:1;color:var(--chili);font-weight:700}.dhead .date{font-size:14px;color:var(--muted)}.day h2{margin:8px 0 10px}' +
+    '.ov .d{font-family:"Songti SC","STSong",serif;font-size:24px;color:var(--chili);font-weight:700}.ov .t{font-weight:600}.ov .s{font-size:14px;color:var(--muted)}.ov .go{font-size:14px;color:var(--muted)}' +
+    '.day{border-top:8px solid var(--leaf);padding-top:28px}.dhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.dhead .k{font-size:13px;letter-spacing:.2em;color:var(--chili)}.dhead .no{font-family:"Songti SC","STSong",serif;font-size:44px;line-height:1;color:var(--chili);font-weight:700}.dhead .date{font-size:14px;color:var(--muted)}.day h2{margin:8px 0 10px}' +
     '.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.chips span{font-size:13px;border:1px solid var(--line);border-radius:999px;padding:3px 10px}' +
     '.sched{list-style:none;margin:0;padding:0}.sched li{display:grid;grid-template-columns:4.4em minmax(0,1fr);gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}.sched li:last-child{border-bottom:0}' +
     '.time{font-variant-numeric:tabular-nums;font-size:17px;font-weight:700;white-space:nowrap}.what{font-weight:600}' +
@@ -237,7 +237,7 @@
     '.drv .ask{font-size:20px;color:#444}.drv .ask.en{font-size:16px;color:#777;margin-top:-10px}.drv .big{font-size:clamp(36px,11vw,60px);font-weight:700;line-height:1.2;overflow-wrap:anywhere}' +
     '.drv .addr2{font-size:clamp(22px,6.5vw,32px);line-height:1.4;overflow-wrap:anywhere}.drv .en2{font-size:20px;color:#333}.drv .cn{font-size:16px;color:#666}.drv small{font-size:14px;color:#888}' +
     '.btn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:999px;font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid var(--chili);color:var(--chili);white-space:nowrap}.btn.solid{background:var(--chili);color:#fff}.btn svg{width:16px;height:16px;flex:none}' +
-    '.tip{margin-top:12px;font-size:15px;border-left:3px solid var(--chili);padding:2px 0 2px 12px}' +
+    '.tip{margin-top:14px;font-size:15px;background:var(--leaf);border-radius:12px;padding:10px 14px}.tip b{color:var(--chili);font-weight:600;margin-right:6px}' +
     '.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.box{border:1px solid var(--line);border-radius:14px;padding:14px 16px}.box h3{font-size:18px;margin-bottom:6px}.box ul{margin:0;padding-left:1.1em}.box li{margin:4px 0}.notes{margin:0;padding-left:1.2em}.notes li{margin:6px 0}' +
     'footer{padding:28px 20px 36px;font-size:13px;color:var(--muted)}' +
     '.bar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}.bar .in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px}' +
@@ -277,19 +277,46 @@
       (f.translated ? '<small>名称为 AI 翻译，请以酒店确认单上的名称为准</small>' : '') + '<small>把手机屏幕给司机看</small></div>';
   }
 
-  function hills(n) {
-    var pts = [];
-    for (var i = 0; i < n; i++) {
-      var x = Math.round(40 + (n === 1 ? 0 : i * 570 / (n - 1)));
-      pts.push([x, Math.round(118 - 40 * (x / 640) - 10 * Math.sin(x / 70))]);
+  // 目的地主题：主色（封面）、点缀色、浅底色，以及一条当地风格的花纹
+  var THEMES = [
+    { key: '土耳其', re: /土耳其|伊斯坦布尔|卡帕多[奇细]亚|棉花堡|安塔利亚|以弗所|库[萨沙]达斯/, label: 'TÜRKİYE', main: '#1F4E79', accent: '#B03A2E', accentD: '#F08A7E', soft: '#EEF3F8', softD: '#16212C', motif: 'star' },
+    { key: '埃及', re: /埃及|开罗|卢克索|阿斯旺|赫尔格达|亚历山大/, label: 'مصر · EGYPT', main: '#1D4B5E', accent: '#9A6B12', accentD: '#E2B65C', soft: '#F7F0E2', softD: '#221D14', motif: 'zigzag' },
+    { key: '日本', re: /日本|东京|京都|大阪|北海道|奈良|冲绳/, label: '日本 · NIPPON', main: '#2E2A28', accent: '#C23B22', accentD: '#F2836F', soft: '#F5F1EA', softD: '#1E1B19', motif: 'waves' },
+    { key: '泰国', re: /泰国|曼谷|清迈|普吉/, label: 'ประเทศไทย · THAILAND', main: '#4E2A78', accent: '#8C6510', accentD: '#E2B65C', soft: '#F4EFF8', softD: '#1D1726', motif: 'diamond' },
+    { key: '意大利', re: /意大利|罗马|佛罗伦萨|威尼斯|米兰/, label: 'ITALIA', main: '#7A3B2E', accent: '#2F6B4F', accentD: '#7CC5A0', soft: '#F8F0EA', softD: '#241A16', motif: 'diamond' },
+    { key: '法国', re: /法国|巴黎|普罗旺斯|尼斯/, label: 'FRANCE', main: '#23395B', accent: '#A3333D', accentD: '#F08A92', soft: '#EFF2F7', softD: '#171D27', motif: 'dots' },
+    { key: '西安', re: /西安|长安|兵马俑|大雁塔/, label: '长安 · XI’AN', main: '#3A2E2A', accent: '#A2382B', accentD: '#F0907F', soft: '#F6F0EA', softD: '#201A17', motif: 'meander' },
+    { key: '成都', re: /成都|四川|熊猫|九寨/, label: '蜀 · CHENGDU', main: '#2F5D50', accent: '#C8322A', accentD: '#FF7A6E', soft: '#EDF4F0', softD: '#16211D', motif: 'diamond' },
+    { key: '云南', re: /云南|大理|丽江|昆明|洱海|玉龙|香格里拉|西双版纳/, label: '彩云之南 · YUNNAN', main: '#1E4F80', accent: '#C2562A', accentD: '#F59A72', soft: '#EDF3F9', softD: '#151E28', motif: 'dots' }
+  ];
+  var THEME_CN = { label: '中国 · CHINA', main: '#1F4D3A', accent: '#C8322A', accentD: '#FF7A6E', soft: '#EAF2EC', softD: '#17241E', motif: 'meander' };
+  var THEME_ABROAD = { main: '#24363F', accent: '#B5502A', accentD: '#F2956E', soft: '#EFF3F4', softD: '#182023', motif: 'dots' };
+
+  function pickTheme(data) {
+    var country = (data.country || '').trim();
+    if (isAbroad(country)) {
+      var byCountry = THEMES.filter(function (t) { return t.key === country; })[0];
+      if (byCountry) return byCountry;
     }
-    var path = 'M' + pts.map(function (p) { return p[0] + ' ' + p[1]; }).join(' L');
-    return '<svg class="hills" viewBox="0 0 640 170" preserveAspectRatio="xMidYMax slice" aria-hidden="true">' +
-      '<path d="M0 120 C70 70 120 90 170 60 S280 40 330 78 S450 30 520 64 S610 70 640 52 V170 H0Z" fill="#fff" fill-opacity=".08"/>' +
-      '<path d="M0 140 C60 104 130 120 190 96 S300 86 360 112 S470 80 540 104 S610 110 640 98 V170 H0Z" fill="#fff" fill-opacity=".12"/>' +
-      '<path d="M0 158 C80 140 150 150 230 136 S380 146 450 134 S580 140 640 130 V170 H0Z" fill="#fff" fill-opacity=".18"/>' +
-      '<path d="' + path + '" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 7" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<g fill="#ff8a7a" stroke="#fff" stroke-width="2.5">' + pts.map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="7"/>'; }).join('') + '</g></svg>';
+    var hay = [data.title, data.city, country].concat((data.days || []).map(function (d) {
+      return Object.keys(d.placeInfo || {}).map(function (n) { return (d.placeInfo[n] || {}).city || ''; }).join(' ') + ' ' + (d.title || '');
+    })).join(' ');
+    var counts = THEMES.map(function (t) { var m = hay.match(new RegExp(t.re.source, 'g')); return m ? m.length : 0; });
+    var best = counts.indexOf(Math.max.apply(null, counts));
+    if (counts[best] > 0) return THEMES[best];
+    if (isAbroad(country)) { var t = Object.assign({}, THEME_ABROAD); t.label = country; return t; }
+    return THEME_CN;
+  }
+
+  function motifBand(t) {
+    var a = t.accent, m = t.main, tile;
+    if (t.motif === 'star') tile = '<path d="M12 4l2.2 5.8L20 12l-5.8 2.2L12 20l-2.2-5.8L4 12l5.8-2.2z" fill="' + a + '"/><circle cx="0" cy="12" r="2" fill="' + m + '"/><circle cx="24" cy="12" r="2" fill="' + m + '"/>';
+    else if (t.motif === 'zigzag') tile = '<path d="M0 20L6 6l6 14 6-14 6 14" fill="none" stroke="' + a + '" stroke-width="2"/><path d="M0 22h24" stroke="' + m + '" stroke-width="2"/>';
+    else if (t.motif === 'waves') tile = '<g fill="none" stroke-width="1.6"><path d="M0 24a12 12 0 0124 0" stroke="' + m + '"/><path d="M4 24a8 8 0 0116 0" stroke="' + a + '"/><path d="M8 24a4 4 0 018 0" stroke="' + m + '"/></g>';
+    else if (t.motif === 'meander') tile = '<path d="M2 21V3h20v14H8V9h8v4" fill="none" stroke="' + a + '" stroke-width="2"/>';
+    else if (t.motif === 'diamond') tile = '<path d="M12 3l9 9-9 9-9-9z" fill="none" stroke="' + a + '" stroke-width="2"/><circle cx="12" cy="12" r="2.2" fill="' + m + '"/>';
+    else tile = '<circle cx="6" cy="12" r="3.2" fill="' + a + '"/><circle cx="18" cy="12" r="1.8" fill="' + m + '"/>';
+    return '<svg class="band" height="24" aria-hidden="true"><defs><pattern id="motif" width="24" height="24" patternUnits="userSpaceOnUse">' + tile + '</pattern></defs><rect width="100%" height="24" fill="url(#motif)"/></svg>';
   }
 
   function renderRoadbook(data) {
@@ -307,6 +334,8 @@
       days.length && '<span>' + days.length + '天' + (nights ? nights + '晚' : '') + '</span>',
       data.pax && '<span>' + esc(data.pax) + '人</span>'].filter(Boolean).join('');
 
+    var th = pickTheme(data);
+    var themeCss = ':root{--green:' + th.main + ';--chili:light-dark(' + th.accent + ',' + th.accentD + ');--leaf:light-dark(' + th.soft + ',' + th.softD + ')}';
     var drivers = [], abroadAny = false;
     var dayHtml = days.map(function (d, i) {
       var places = (d.places || []).slice();
@@ -355,9 +384,9 @@
       if (extra.length) {
         items += '<li><span class="time">地点</span><div>' + extra.map(function (p) { return card(p, ''); }).join('') + '</div></li>';
       }
-      return '<section class="day" id="day' + (i + 1) + '"><div class="dhead"><span class="no">D' + (i + 1) + '</span><span class="date">' + esc(dayDate(data.startDate, i)) + '</span></div>' +
+      return '<section class="day" id="day' + (i + 1) + '"><div class="dhead"><span class="k">DAY</span><span class="no">' + (i < 9 ? '0' : '') + (i + 1) + '</span><span class="date">' + esc(dayDate(data.startDate, i)) + '</span></div>' +
         '<h2>' + esc(d.title) + '</h2>' + (d.chips && d.chips.length ? '<div class="chips">' + d.chips.map(function (c) { return '<span>' + esc(c) + '</span>'; }).join('') + '</div>' : '') +
-        '<ol class="sched">' + items + '</ol>' + (d.tip ? '<div class="tip">' + esc(d.tip) + '</div>' : '') + '</section>';
+        '<ol class="sched">' + items + '</ol>' + (d.tip ? '<div class="tip"><b>' + (isAbroad(data.country) ? '当地贴士' : '贴士') + '</b>' + esc(d.tip) + '</div>' : '') + '</section>';
     }).join('');
 
     var overview = days.map(function (d, i) {
@@ -366,7 +395,7 @@
     }).join('');
 
     var list = function (arr) { return '<ul>' + arr.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; };
-    var fees = (data.include.length || data.exclude.length) ? '<section><h2>费用说明</h2><div class="cols">' +
+    var fees = (data.include.length || data.exclude.length) ? '<section id="fees"><h2>费用说明</h2><div class="cols">' +
       (data.include.length ? '<div class="box"><h3>已包含</h3>' + list(data.include) + '</div>' : '') +
       (data.exclude.length ? '<div class="box"><h3>不包含</h3>' + list(data.exclude) + '</div>' : '') + '</div></section>' : '';
     var notes = data.notes.length ? '<section><h2>出行提示</h2><ol class="notes">' + data.notes.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></section>' : '';
@@ -375,9 +404,10 @@
       return '<a class="call' + (i ? ' alt' : '') + '" href="tel:' + esc(c.tel.replace(/[\s-]/g, '')) + '"><b>致电' + esc(c.role) + ' ' + esc(c.name) + '</b><small>' + esc(c.tel) + '</small></a>';
     }).join('') + '</div></nav>' : '';
 
-    return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' + esc(data.title || '行程路书') + '</title><style>' + CSS + '</style></head><body>' +
-      '<header class="cover"><div class="wrap"><div class="in"><div class="org">' + esc(data.org || '') + ' · 出行手册</div><h1>' + esc(data.title || '行程路书') + '</h1><div class="meta">' + meta + '</div></div>' +
-      hills(Math.min(Math.max(stops.length, 2), 6)) + '<div class="stops">' + stops.slice(0, 8).map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div></div></header>' +
+    return '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' + esc(data.title || '行程路书') + '</title><style>' + CSS + themeCss + '</style></head><body>' +
+      '<header class="cover"><div class="wrap"><div class="in"><div class="org">' + esc(data.org || '') + ' · 出行手册</div>' + (th.label ? '<div class="label">' + esc(th.label) + '</div>' : '') + '<h1>' + esc(data.title || '行程路书') + '</h1><div class="meta">' + meta + '</div></div>' +
+      '<div class="stops">' + stops.slice(0, 8).map(function (s) { return '<span>' + esc(s) + '</span>'; }).join('') + '</div></div></header>' + motifBand(th) +
+      (days.length > 1 ? '<nav class="dnav" aria-label="按天跳转"><div class="wrap">' + days.map(function (d, i) { return '<a href="#day' + (i + 1) + '">D' + (i + 1) + '</a>'; }).join('') + '<a href="#fees">费用</a></div></nav>' : '') +
       '<main class="wrap">' + (days.length ? '<section><h2>行程一览</h2><div class="overview">' + overview + '</div></section>' : '') +
       (abroadAny ? '<section><div class="notice"><h3>出境导航小贴士</h3><ul><li>出境后建议在当地购买电话卡或开通国际流量。用国内手机卡漫游时，Google 地图可能打不开，可以改用苹果地图。</li><li>打车或问路时，点地点旁边的「给司机看」，把屏幕给司机看，上面是当地语言的地名和地址。</li></ul></div></section>' : '') +
       dayHtml + fees + notes + '</main>' +
